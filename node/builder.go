@@ -108,7 +108,6 @@ const (
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
 
-	RegisterClientValidatorKey
 	HandlePaymentChannelManagerKey
 
 	// miner
@@ -116,7 +115,6 @@ const (
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
-	RegisterProviderValidatorKey
 
 	// daemon
 	ExtractApiKey
@@ -255,6 +253,7 @@ func Online() Option {
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),
+			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
@@ -265,14 +264,11 @@ func Online() Option {
 			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
-			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
 			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
-			Override(new(dtypes.ClientRequestValidator), modules.NewClientRequestValidator),
 			Override(new(modules.ClientDealFunds), modules.NewClientDealFunds),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
-			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(new(beacon.RandomBeacon), modules.RandomBeacon),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
@@ -301,7 +297,7 @@ func Online() Option {
 			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*storage.Miner), modules.StorageMiner),
+			Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
@@ -309,16 +305,13 @@ func Online() Option {
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
-			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(dtypes.ProviderRequestValidator), modules.NewProviderRequestValidator),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.DealFilter), modules.BasicDealFilter(nil)),
 			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
-			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),
@@ -438,6 +431,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
 	)
 }
 

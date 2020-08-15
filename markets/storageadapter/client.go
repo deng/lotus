@@ -5,8 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-
-	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"golang.org/x/xerrors"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -127,7 +127,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		From:   addr,
 		Value:  amount,
 		Method: builtin.MethodsMarket.AddBalance,
-	})
+	}, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -209,7 +209,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
+	_, ret, _, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -225,13 +225,15 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	return res.IDs[dealIdx], nil
 }
 
+const clientOverestimation = 2
+
 func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	bounds, err := c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	return bounds.Min, bounds.Max, nil
+	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
