@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"go.uber.org/fx"
@@ -127,17 +128,26 @@ func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.C
 }
 
 type sidsc struct {
-	sc *storedcounter.StoredCounter
+	sc    *storedcounter.StoredCounter
+	max   int
+	index int
 }
 
 func (s *sidsc) Next() (abi.SectorNumber, error) {
 	i, err := s.sc.Next()
+	if s.max > 1 {
+		i = uint64(s.max)*i + uint64(s.index)
+	}
 	return abi.SectorNumber(i), err
 }
 
 func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
+	max, _ := ds.Get(datastore.NewKey("sector-cluster-size"))
+	index, _ := ds.Get(datastore.NewKey("sector-cluster-index"))
+	maxValue, _ := strconv.Atoi(string(max))
+	indexValue, _ := strconv.Atoi(string(index))
 	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
-	return &sidsc{sc}
+	return &sidsc{sc: sc, max: maxValue, index: indexValue}
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingDelayFunc) (*storage.Miner, error) {

@@ -107,6 +107,16 @@ var initCmd = &cli.Command{
 			Usage: "set gas premium for initialization messages in AttoFIL",
 			Value: "0",
 		},
+		&cli.StringFlag{
+			Name:  "sector-cluster-size",
+			Usage: "sector cluster size default 0",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "sector-cluster-index",
+			Usage: "sector cluster index default 0, should be less than sector-cluster-size",
+			Value: "0",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
@@ -515,6 +525,16 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 	log.Infof("Created new miner: %s", addr)
 	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+		return err
+	}
+
+	clusterSize := cctx.Int("sector-cluster-size")
+	if err := mds.Put(datastore.NewKey("sector-cluster-size"), []byte(string(clusterSize))); err != nil {
+		return err
+	}
+
+	clusterIndex := cctx.Int("sector-cluster-index")
+	if err := mds.Put(datastore.NewKey("sector-cluster-index"), []byte(string(clusterIndex))); err != nil {
 		return err
 	}
 
