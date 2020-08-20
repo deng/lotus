@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"syscall"
 
 	mux "github.com/gorilla/mux"
+	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/urfave/cli/v2"
@@ -24,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -49,6 +52,16 @@ var runCmd = &cli.Command{
 			Name:  "manage-fdlimit",
 			Usage: "manage open file limit",
 			Value: true,
+		},
+		&cli.Uint64Flag{
+			Name:  "sector-start",
+			Usage: "sector with start",
+			Value: 0,
+		},
+		&cli.BoolFlag{
+			Name:  "clear-sector",
+			Usage: "clear pre sector",
+			Value: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -100,6 +113,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
+		initSectorNumber(r, cctx.Uint64("sector-start"), cctx.Bool("clear-sector"))
 		shutdownChan := make(chan struct{})
 
 		var minerapi api.StorageMiner
@@ -177,4 +191,42 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(manet.NetListener(lst))
 	},
+}
+
+func initSectorNumber(r repo.Repo, minSectorID uint64, clear bool) error {
+	lr, err := r.Lock(repo.StorageMiner)
+	if err != nil {
+		return err
+	}
+	defer lr.Close() //nolint:errcheck
+
+	mds, err := lr.Datastore("/metadata")
+	if err != nil {
+		return err
+	}
+	if clear {
+		if err := mds.Delete(datastore.NewKey("/sectors")); err != nil {
+			return err
+		}
+	}
+	key := datastore.NewKey(modules.StorageCounterDSPrefix)
+	has, err := mds.Has(key)
+	if err != nil {
+		return err
+	}
+	var cur uint64 = 0
+	if has {
+		curBytes, err := mds.Get(key)
+		if err != nil {
+			return err
+		}
+		cur, _ = binary.Uvarint(curBytes)
+	}
+	if cur > minSectorID {
+		return nil
+	}
+	log.Infof("=========> init sector number : %d", minSectorID)
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, minSectorID)
+	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }

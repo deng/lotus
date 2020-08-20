@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 
@@ -89,6 +90,8 @@ type SealerConfig struct {
 
 type StorageAuth http.Header
 
+const LocalHost = "localhost"
+
 func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc SealerConfig, urls URLs, sa StorageAuth) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
@@ -140,7 +143,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
 		TaskTypes: localTasks,
-	}, stor, lstor, si))
+	}, stor, lstor, si), LocalHost)
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)
 	}
@@ -166,12 +169,12 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 	return nil
 }
 
-func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
+func (m *Manager) AddWorker(ctx context.Context, w Worker, url string) error {
 	info, err := w.Info(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting worker info: %w", err)
 	}
-
+	info.Url = strings.TrimSuffix(strings.TrimPrefix(url, "ws://"), "/rpc/v0")
 	m.sched.newWorkers <- &workerHandle{
 		w: w,
 		wt: &workTracker{

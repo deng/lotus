@@ -188,23 +188,10 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		// TODO: see what we have local, prefer that
 
 		for _, url := range info.URLs {
-			tempDest, err := tempFetchDest(dest, true)
+			err = r.fetch(ctx, url, dest)
 			if err != nil {
-				return "", err
-			}
-
-			if err := os.RemoveAll(dest); err != nil {
-				return "", xerrors.Errorf("removing dest: %w", err)
-			}
-
-			err = r.fetch(ctx, url, tempDest)
-			if err != nil {
-				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
+				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, err))
 				continue
-			}
-
-			if err := move(tempDest, dest); err != nil {
-				return "", xerrors.Errorf("fetch move error (storage %s) %s -> %s: %w", info.ID, tempDest, dest, err)
 			}
 
 			if merr != nil {
@@ -219,7 +206,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	log.Infof("Fetch %s -> %s", url, outname)
-
+	return nil
 	if len(r.limit) >= cap(r.limit) {
 		log.Infof("Throttling fetch, %d already running", len(r.limit))
 	}
@@ -320,7 +307,7 @@ func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ SectorFileTyp
 
 func (r *Remote) deleteFromRemote(ctx context.Context, url string) error {
 	log.Infof("Delete %s", url)
-
+	return nil
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return xerrors.Errorf("request: %w", err)
