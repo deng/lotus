@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -92,6 +93,9 @@ type workerHandle struct {
 	cleanupStarted bool
 	closedMgr      chan struct{}
 	closingMgr     chan struct{}
+
+	supported map[sealtasks.TaskType]struct{}
+	paths     []stores.StoragePath
 }
 
 type schedWindowRequest struct {
@@ -283,7 +287,7 @@ func (sh *scheduler) trySched() {
 	windows := make([]schedWindow, len(sh.openWindows))
 	acceptableWindows := make([][]int, sh.schedQueue.Len())
 
-	log.Debugf("SCHED %d queued; %d open windows", sh.schedQueue.Len(), len(windows))
+	log.Infof("SCHED %d queued; %d open windows", sh.schedQueue.Len(), len(windows))
 
 	sh.workersLk.RLock()
 	defer sh.workersLk.RUnlock()
@@ -611,6 +615,12 @@ func (sh *scheduler) newWorker(w *workerHandle) {
 	sh.workersLk.Lock()
 
 	id := sh.nextWorker
+
+	rpcCtx, cancel := context.WithTimeout(context.TODO(), SelectorTimeout)
+	_, _ = w.getTaskTypes(rpcCtx)
+	_, _ = w.getPaths(rpcCtx)
+	cancel()
+
 	sh.workers[id] = w
 	sh.nextWorker++
 

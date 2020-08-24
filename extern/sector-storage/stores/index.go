@@ -34,7 +34,7 @@ type StorageInfo struct {
 
 type HealthReport struct {
 	Stat fsutil.FsStat
-	Err  error
+	Err  string
 }
 
 type SectorStorageInfo struct {
@@ -79,7 +79,7 @@ type storageEntry struct {
 	fsi  fsutil.FsStat
 
 	lastHeartbeat time.Time
-	heartbeatErr  error
+	heartbeatErr  string
 }
 
 type Index struct {
@@ -317,7 +317,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 				continue
 			}
 
-			if st.heartbeatErr != nil {
+			if st.heartbeatErr != "" {
 				log.Debugf("not selecting on %s, heartbeat error: %s", st.info.ID, st.heartbeatErr)
 				continue
 			}
@@ -394,7 +394,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, s
 			continue
 		}
 
-		if p.heartbeatErr != nil {
+		if p.heartbeatErr != "" {
 			log.Debugf("not allocating on %s, heartbeat error: %s", p.info.ID, p.heartbeatErr)
 			continue
 		}

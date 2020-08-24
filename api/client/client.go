@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"time"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -75,8 +74,9 @@ func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerAPI, jsonrp
 		},
 		requestHeader,
 		rpcenc.ReaderParamEncoder(u.String()),
-		jsonrpc.WithNoReconnect(),
-		jsonrpc.WithTimeout(30*time.Second),
+		//jsonrpc.WithNoReconnect(),
+		jsonrpc.WithTimeout(0),
+		jsonrpc.WithPingInterval(0),
 	)
 
 	return &res, closer, err

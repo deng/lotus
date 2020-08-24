@@ -165,8 +165,9 @@ var runCmd = &cli.Command{
 		var err error
 		for {
 			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx,
-				jsonrpc.WithNoReconnect(),
-				jsonrpc.WithTimeout(30*time.Second))
+				//jsonrpc.WithNoReconnect(),
+				jsonrpc.WithTimeout(0),
+				jsonrpc.WithPingInterval(0))
 			if err == nil {
 				break
 			}
@@ -277,7 +278,9 @@ var runCmd = &cli.Command{
 			}
 
 			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+				if len(sc.StoragePaths) == 0 {
+					sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+				}
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
 			}

@@ -51,9 +51,13 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 			}
 
 			if lp.Sealed == "" || lp.Cache == "" {
-				log.Warnw("CheckProvable Sector FAULT: cache an/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)
-				bad = append(bad, sector)
-				return nil
+				//查询目录
+				lp, err = m.localStore.GetSectorPaths(ctx, stores.FTSealed, stores.PathStorage, sector)
+				if err != nil || lp.Sealed == "" || lp.Cache == "" {
+					log.Warnw("CheckProvable Sector FAULT: cache an/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)
+					bad = append(bad, sector)
+					return nil
+				}
 			}
 
 			toCheck := map[string]int64{
