@@ -997,6 +997,10 @@ var clientListDeals = &cli.Command{
 			return err
 		}
 
+		sort.Slice(localDeals, func(i, j int) bool {
+			return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
+		})
+
 		var deals []deal
 		for _, v := range localDeals {
 			if v.DealID == 0 {
@@ -1025,7 +1029,7 @@ var clientListDeals = &cli.Command{
 
 		if cctx.Bool("verbose") {
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			fmt.Fprintf(w, "DealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+			fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
 			for _, d := range deals {
 				onChain := "N"
 				if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1038,7 +1042,7 @@ var clientListDeals = &cli.Command{
 				}
 
 				price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-				fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+				fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
 			}
 			return w.Flush()
 		} else {
@@ -1254,7 +1258,7 @@ var clientListTransfers = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				outputChannels(tm.Screen, channels, completed, color)
+				OutputDataTransferChannels(tm.Screen, channels, completed, color)
 
 				tm.Flush()
 
@@ -1279,12 +1283,13 @@ var clientListTransfers = &cli.Command{
 				}
 			}
 		}
-		outputChannels(os.Stdout, channels, completed, color)
+		OutputDataTransferChannels(os.Stdout, channels, completed, color)
 		return nil
 	},
 }
 
-func outputChannels(out io.Writer, channels []api.DataTransferChannel, completed bool, color bool) {
+// OutputDataTransferChannels generates table output for a list of channels
+func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, completed bool, color bool) {
 	sort.Slice(channels, func(i, j int) bool {
 		return channels[i].TransferID < channels[j].TransferID
 	})
@@ -1346,7 +1351,7 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 	}
 }
 
-func toChannelOutput(useColor bool, otherPartyColumn string, channel api.DataTransferChannel) map[string]interface{} {
+func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTransferChannel) map[string]interface{} {
 	rootCid := channel.BaseCID.String()
 	rootCid = "..." + rootCid[len(rootCid)-8:]
 
