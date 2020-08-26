@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"path"
@@ -13,9 +14,9 @@ import (
 )
 
 // NewCommonRPC creates a new http jsonrpc client.
-func NewCommonRPC(addr string, requestHeader http.Header) (api.Common, jsonrpc.ClientCloser, error) {
+func NewCommonRPC(ctx context.Context, addr string, requestHeader http.Header) (api.Common, jsonrpc.ClientCloser, error) {
 	var res apistruct.CommonStruct
-	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
 		},
@@ -26,9 +27,9 @@ func NewCommonRPC(addr string, requestHeader http.Header) (api.Common, jsonrpc.C
 }
 
 // NewFullNodeRPC creates a new http jsonrpc client.
-func NewFullNodeRPC(addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res apistruct.FullNodeStruct
-	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.CommonStruct.Internal,
 			&res.Internal,
@@ -38,9 +39,9 @@ func NewFullNodeRPC(addr string, requestHeader http.Header) (api.FullNode, jsonr
 }
 
 // NewStorageMinerRPC creates a new http jsonrpc client for miner
-func NewStorageMinerRPC(addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+func NewStorageMinerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	var res apistruct.StorageMinerStruct
-	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.CommonStruct.Internal,
 			&res.Internal,
@@ -52,7 +53,7 @@ func NewStorageMinerRPC(addr string, requestHeader http.Header, opts ...jsonrpc.
 	return &res, closer, err
 }
 
-func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
+func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, nil, err
@@ -68,7 +69,7 @@ func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerAPI, jsonrp
 	u.Path = path.Join(u.Path, "../streams/v0/push")
 
 	var res apistruct.WorkerStruct
-	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
 		},
