@@ -109,7 +109,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 				continue
 			}
 			if c.Equals(params.Data.Root) {
-				storeID = &importID
+				storeID = &importID //nolint
 				break
 			}
 		}
@@ -469,8 +469,10 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	retrievalResult := make(chan error, 1)
 
+	var dealId retrievalmarket.DealID
+
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		if state.PayloadCID.Equals(order.Root) {
+		if state.PayloadCID.Equals(order.Root) && state.ID == dealId {
 
 			select {
 			case <-ctx.Done():
@@ -514,7 +516,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		_ = a.RetrievalStoreMgr.ReleaseStore(store)
 	}()
 
-	_, err = a.Retrieval.Retrieve(
+	dealId, err = a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
 		params,
@@ -531,16 +533,16 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	select {
 	case <-ctx.Done():
+		unsubscribe()
 		finish(xerrors.New("Retrieval Timed Out"))
 		return
 	case err := <-retrievalResult:
+		unsubscribe()
 		if err != nil {
 			finish(xerrors.Errorf("Retrieve: %w", err))
 			return
 		}
 	}
-
-	unsubscribe()
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
 	if ref == nil {
@@ -614,7 +616,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 	if err != nil {
 		return nil, err
 	}
-	defer rdr.Close()
+	defer rdr.Close() //nolint:errcheck
 
 	stat, err := rdr.Stat()
 	if err != nil {
@@ -700,7 +702,7 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	stat, err := f.Stat()
 	if err != nil {

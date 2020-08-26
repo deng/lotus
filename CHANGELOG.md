@@ -1,12 +1,31 @@
 # Lotus changelog
 
-## 0.5.0 / 2020-08-2020
+# 0.5.2 / 2020-08-24
+
+This is a hotfix release.
+
+- Fix message selection to not include messages that are invalid for block
+  inclusion.
+- Improve SelectMessage handling of the case where the message pools tipset
+  differs from our mining base.
+
+# 0.5.1 / 2020-08-24
+
+The Space Race release! 
+This release contains the genesis car file and bootstrap peers for the space
+race network. 
+
+Additionally, we included two small fixes to genesis creation:
+- Randomize ticket value in genesis generation
+- Correctly set t099 (burnt funds actor) to have valid account actor state
+
+# 0.5.0 / 2020-08-20
 
 This version of Lotus will be used for the incentivized testnet Space Race competition,
 and can be considered mainnet-ready code. It includes some protocol
 changes, upgrades of core dependencies, and various bugfixes and UX/performance improvements.
 
-# Highlights
+## Highlights
 
 Among the highlights included in this release are:
 
@@ -16,7 +35,7 @@ and the packing of multiple deals into a single sector.
 - Renamed features: We renamed some of the binaries, environment variables, and default
 paths associated with a Lotus node.
 
-## Gas changes
+### Gas changes
 
 We made some significant changes to the mechanics of gas in this release.
 
@@ -73,7 +92,7 @@ data can be quickly served in a retrieval deal, since it will not need to be uns
 Miners can now pack multiple deals into a single sector, so long as all the deals
 fit into the sector capacity. This should increase the packing efficiency of miners.
 
-## Renamed features
+### Renamed features
 
 To improve the user experience, we updated several names to mainatin
 standard prefixing, and to better reflect the meaning of the features being referenced.
@@ -83,7 +102,7 @@ path for miner data is now `~/.lotusminer`, and the environment variable
 that sets the path for miner data is now `$LOTUS_MINER_PATH`. A full list of renamed
 features can be found [here](https://github.com/filecoin-project/lotus/issues/2304).
 
-# Changelog
+## Changelog
 
 #### Downstream upgrades
 - Upgrades markets to v0.5.6 (https://github.com/filecoin-project/lotus/pull/3058)
@@ -114,7 +133,7 @@ features can be found [here](https://github.com/filecoin-project/lotus/issues/23
 - Miners can toggle auto-acceptance of deals (https://github.com/filecoin-project/lotus/pull/1994)
 - Miners can maintain a blocklist of piece CIDs (https://github.com/filecoin-project/lotus/pull/2069)
 
-# Contributors
+## Contributors
 
 The following contributors had 10 or more commits go into this release.
 We are grateful for every contribution!
@@ -141,7 +160,7 @@ We are grateful for every contribution!
 | Stebalien          | 11      | +1204/-980    |
 | RobQuistNL         | 10      | +69/-74       |
 
-## 0.1.0 / 2019-12-11
+# 0.1.0 / 2019-12-11
 
 We are very excited to release **lotus** 0.1.0. This is our testnet release. To install lotus and join the testnet, please visit [lotu.sh](lotu.sh). Please file bug reports as [issues](https://github.com/filecoin-project/lotus/issues).
 
