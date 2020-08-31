@@ -596,37 +596,4 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	return p.stat(st.localStorage)
 }
 
-func (st *Local) GetSectorPaths(ctx context.Context, fileType SectorFileType, pathType PathType, sid abi.SectorID) (SectorPaths, error) {
-	var out SectorPaths
-	paths, err := st.Local(ctx)
-	if err != nil {
-		return SectorPaths{}, err
-	}
-
-	found := false
-	for _, path := range paths {
-		if (pathType == PathSealing) && !path.CanSeal {
-			continue
-		}
-		if (pathType == PathStorage) && !path.CanStore {
-			continue
-		}
-
-		p, ok := st.paths[path.ID]
-		if !ok {
-			return SectorPaths{}, errPathNotFound
-		}
-
-		found = true
-
-		spath := p.sectorPath(sid, fileType)
-		SetPathByType(&out, fileType, spath)
-	}
-
-	if !found {
-		return SectorPaths{}, errPathNotFound
-	}
-	return out, nil
-}
-
 var _ Store = &Local{}
