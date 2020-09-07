@@ -281,9 +281,7 @@ var runCmd = &cli.Command{
 			}
 
 			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				if len(sc.StoragePaths) == 0 {
-					sc.StoragePaths = append(sc.StoragePaths, localPaths...)
-				}
+				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
 			}
