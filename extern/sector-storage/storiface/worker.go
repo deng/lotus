@@ -8,8 +8,8 @@ import (
 )
 
 type WorkerInfo struct {
-	Hostname string
-
+	Hostname  string
+	Url       string
 	Resources WorkerResources
 }
 

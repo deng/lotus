@@ -2,12 +2,10 @@ package client
 
 import (
 	"context"
+	"github.com/filecoin-project/go-jsonrpc"
 	"net/http"
 	"net/url"
 	"path"
-	"time"
-
-	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -48,7 +46,8 @@ func NewStorageMinerRPC(ctx context.Context, addr string, requestHeader http.Hea
 			&res.Internal,
 		},
 		requestHeader,
-		opts...,
+		jsonrpc.WithPingInterval(0),
+		jsonrpc.WithTimeout(0),
 	)
 
 	return &res, closer, err
@@ -76,8 +75,8 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 		},
 		requestHeader,
 		rpcenc.ReaderParamEncoder(u.String()),
-		jsonrpc.WithNoReconnect(),
-		jsonrpc.WithTimeout(30*time.Second),
+		jsonrpc.WithPingInterval(0),
+		jsonrpc.WithTimeout(0),
 	)
 
 	return &res, closer, err

@@ -74,7 +74,7 @@ var sealingWorkersCmd = &cli.Command{
 				gpuUse = ""
 			}
 
-			fmt.Printf("Worker %d, host %s\n", stat.id, color.MagentaString(stat.Info.Hostname))
+			fmt.Printf("Worker %d ( %s | %s )\n", stat.id, color.MagentaString(stat.Info.Hostname), color.GreenString(stat.Info.Url))
 
 			var barCols = uint64(64)
 			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
@@ -162,7 +162,7 @@ var sealingJobsCmd = &cli.Command{
 		})
 
 		workerHostnames := map[uint64]string{}
-
+		workerUrls := map[uint64]string{}
 		wst, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting worker stats: %w", err)
@@ -170,17 +170,18 @@ var sealingJobsCmd = &cli.Command{
 
 		for wid, st := range wst {
 			workerHostnames[wid] = st.Info.Hostname
+			workerUrls[wid] = st.Info.Url
 		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintf(tw, "ID\tSector\tWorker\tHostname\tTask\tState\tTime\n")
+		_, _ = fmt.Fprintf(tw, "ID\tSector\tWorker\tHostname\tURL\tTask\tState\tTime\n")
 
 		for _, l := range lines {
 			state := "running"
 			if l.RunWait != 0 {
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\t%s\t%s\t%s\n", l.ID, l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, time.Now().Sub(l.Start).Truncate(time.Millisecond*100))
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n", l.ID, l.Sector.Number, l.wid, workerHostnames[l.wid], workerUrls[l.wid], l.Task.Short(), state, time.Now().Sub(l.Start).Truncate(time.Millisecond*100))
 		}
 
 		return tw.Flush()

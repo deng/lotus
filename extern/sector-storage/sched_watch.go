@@ -33,17 +33,18 @@ func (sh *scheduler) runWorkerWatcher() {
 		case n == 1: // sh.watchClosing
 			if !ok {
 				log.Errorf("watchClosing channel closed")
-				return
+				continue
 			}
 
 			wid, ok := rv.Interface().(WorkerID)
 			if !ok {
-				panic("got a non-WorkerID message")
+				log.Errorf("got a non-WorkerID message")
+				continue
 			}
 
-			sh.workersLk.Lock()
+			sh.workersLk.RLock()
 			workerClosing, err := sh.workers[wid].w.Closing(ctx)
-			sh.workersLk.Unlock()
+			sh.workersLk.RUnlock()
 			if err != nil {
 				log.Errorf("getting worker closing channel: %+v", err)
 				select {
@@ -71,7 +72,7 @@ func (sh *scheduler) runWorkerWatcher() {
 				Dir:  reflect.SelectRecv,
 				Chan: reflect.ValueOf(workerClosing),
 			}
-
+			log.Infof("sched_watch ====> worker %d add watch close case ", wid)
 			caseToWorker[toSet] = wid
 		default:
 			wid, found := caseToWorker[n]
@@ -88,13 +89,11 @@ func (sh *scheduler) runWorkerWatcher() {
 
 			log.Warnf("worker %d dropped", wid)
 			// send in a goroutine to avoid a deadlock between workerClosing / watchClosing
-			go func() {
-				select {
-				case sh.workerClosing <- wid:
-				case <-sh.closing:
-					return
-				}
-			}()
+			select {
+			case sh.workerClosing <- wid:
+			case <-sh.closing:
+				return
+			}
 		}
 	}
 }

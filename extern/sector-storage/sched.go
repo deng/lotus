@@ -2,7 +2,7 @@ package sectorstorage
 
 import (
 	"context"
-	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"math/rand"
 	"sort"
 	"sync"
@@ -96,6 +96,8 @@ type workerHandle struct {
 	cleanupStarted bool
 	closedMgr      chan struct{}
 	closingMgr     chan struct{}
+	supported      map[sealtasks.TaskType]struct{}
+	paths          []stores.StoragePath
 }
 
 type schedWindowRequest struct {
@@ -147,13 +149,13 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		nextWorker: 0,
 		workers:    map[WorkerID]*workerHandle{},
 
-		newWorkers: make(chan *workerHandle),
+		newWorkers: make(chan *workerHandle, 10000),
 
-		watchClosing:  make(chan WorkerID),
-		workerClosing: make(chan WorkerID),
+		watchClosing:  make(chan WorkerID, 10000),
+		workerClosing: make(chan WorkerID, 10000),
 
 		schedule:       make(chan *workerRequest),
-		windowRequests: make(chan *schedWindowRequest, 20),
+		windowRequests: make(chan *schedWindowRequest, 10000),
 
 		schedQueue: &requestQueue{},
 
@@ -425,6 +427,9 @@ func (sh *scheduler) trySched() {
 		selectedWindow := -1
 		for _, wnd := range acceptableWindows[task.indexHeap] {
 			wid := sh.openWindows[wnd].worker
+			if sh.workers[wid] == nil {
+				continue
+			}
 			wr := sh.workers[wid].info.Resources
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
@@ -495,21 +500,21 @@ func (sh *scheduler) trySched() {
 	sh.openWindows = newOpenWindows
 }
 
-func (sh *scheduler) runWorker(wid WorkerID) {
+func (sh *scheduler) runWorker(id WorkerID, w *workerHandle) {
 	var ready sync.WaitGroup
 	ready.Add(1)
 	defer ready.Wait()
 
-	go func() {
-		sh.workersLk.RLock()
-		worker, found := sh.workers[wid]
-		sh.workersLk.RUnlock()
+	go func(wid WorkerID, worker *workerHandle) {
+		//sh.workersLk.RLock()
+		//worker, found := sh.workers[wid]
+		//sh.workersLk.RUnlock()
 
 		ready.Done()
 
-		if !found {
-			panic(fmt.Sprintf("worker %d not found", wid))
-		}
+		//if !found {
+		//	panic(fmt.Sprintf("worker %d not found", wid))
+		//}
 
 		defer close(worker.closedMgr)
 
@@ -517,13 +522,13 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 		taskDone := make(chan struct{}, 1)
 		windowsRequested := 0
 
-		ctx, cancel := context.WithCancel(context.TODO())
-		defer cancel()
+		//ctx, cancel := context.WithCancel(context.TODO())
+		//defer cancel()
 
-		workerClosing, err := worker.w.Closing(ctx)
-		if err != nil {
-			return
-		}
+		//workerClosing, err := worker.w.Closing(ctx)
+		//if err != nil {
+		//	return
+		//}
 
 		defer func() {
 			log.Warnw("Worker closing", "workerid", wid)
@@ -541,8 +546,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 				}:
 				case <-sh.closing:
 					return
-				case <-workerClosing:
-					return
+				//case <-workerClosing:
+				//	return
 				case <-worker.closingMgr:
 					return
 				}
@@ -557,8 +562,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 				log.Debugw("task done", "workerid", wid)
 			case <-sh.closing:
 				return
-			case <-workerClosing:
-				return
+			//case <-workerClosing:
+			//	return
 			case <-worker.closingMgr:
 				return
 			}
@@ -617,7 +622,7 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			worker.wndLk.Unlock()
 			sh.workersLk.RUnlock()
 		}
-	}()
+	}(id, w)
 }
 
 func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) int {
@@ -746,15 +751,14 @@ func (sh *scheduler) newWorker(w *workerHandle) {
 	w.closingMgr = make(chan struct{})
 
 	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
 
 	id := sh.nextWorker
 	sh.workers[id] = w
 	sh.nextWorker++
 
-	sh.workersLk.Unlock()
-
-	sh.runWorker(id)
-
+	sh.runWorker(id, w)
+	log.Infof("sched  ====> end newWorker %s", w.info.Url)
 	select {
 	case sh.watchClosing <- id:
 	case <-sh.closing:

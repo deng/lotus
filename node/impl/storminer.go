@@ -288,7 +288,7 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 
 	log.Infof("Connected to a remote worker at %s", url)
 
-	return sm.StorageMgr.AddWorker(ctx, w)
+	return sm.StorageMgr.AddWorker(ctx, w, url)
 }
 
 func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context) (interface{}, error) {

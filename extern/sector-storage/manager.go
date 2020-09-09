@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
@@ -89,6 +90,8 @@ type SealerConfig struct {
 
 type StorageAuth http.Header
 
+const LocalHost = "localhost"
+
 func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc SealerConfig, urls URLs, sa StorageAuth) (*Manager, error) {
 	lstor, err := stores.NewLocal(ctx, ls, si, urls)
 	if err != nil {
@@ -140,7 +143,7 @@ func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, cfg
 	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
 		SealProof: cfg.SealProofType,
 		TaskTypes: localTasks,
-	}, stor, lstor, si))
+	}, stor, lstor, si), LocalHost)
 	if err != nil {
 		return nil, xerrors.Errorf("adding local worker: %w", err)
 	}
@@ -166,12 +169,13 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 	return nil
 }
 
-func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
+func (m *Manager) AddWorker(ctx context.Context, w Worker, url string) error {
 	info, err := w.Info(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting worker info: %w", err)
 	}
-
+	info.Url = strings.TrimSuffix(strings.TrimPrefix(url, "ws://"), "/rpc/v0")
+	log.Infof("manage  ====> AddWorker %s", info.Url)
 	m.sched.newWorkers <- &workerHandle{
 		w: w,
 		wt: &workTracker{
@@ -180,6 +184,8 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 		info:      info,
 		preparing: &activeResources{},
 		active:    &activeResources{},
+		supported: make(map[sealtasks.TaskType]struct{}),
+		paths:     make([]stores.StoragePath, 0),
 	}
 	return nil
 }
@@ -199,6 +205,7 @@ func schedNop(context.Context, Worker) error {
 
 func schedFetch(sector abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
+		log.Infof("Schedule tasks ==========> worker fetch")
 		return worker.Fetch(ctx, sector, ft, ptype, am)
 	}
 }
@@ -301,9 +308,12 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 	}
 
 	var out abi.PieceInfo
+	log.Infof("Schedule tasks ==========1========>AddPiece, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
+		log.Infof("Schedule tasks ==========2========>AddPiece, sector :%v", sector)
 		p, err := w.AddPiece(ctx, sector, existingPieces, sz, r)
 		if err != nil {
+			log.Infof("Schedule tasks ==========3========>AddPiece, sector :%v, err :%v", sector, err)
 			return err
 		}
 		out = p
@@ -324,10 +334,12 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	// TODO: also consider where the unsealed data sits
 
 	selector := newAllocSelector(m.index, stores.FTCache|stores.FTSealed, stores.PathSealing)
-
+	log.Infof("Schedule tasks ==========1========>SealPreCommit1, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+		log.Infof("Schedule tasks ========2==========>SealPreCommit1, sector :%v", sector)
 		p, err := w.SealPreCommit1(ctx, sector, ticket, pieces)
 		if err != nil {
+			log.Infof("Schedule tasks ========3==========>SealPreCommit1, sector :%v, err :%v", sector, err)
 			return err
 		}
 		out = p
@@ -346,10 +358,12 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	}
 
 	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
-
+	log.Infof("Schedule tasks ===========1=======>SealPreCommit2, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+		log.Infof("Schedule tasks ==========2========>SealPreCommit2, sector :%v", sector)
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
 		if err != nil {
+			log.Infof("Schedule tasks ==========3========>SealPreCommit2, sector :%v, err :%v", sector, err)
 			return err
 		}
 		out = p
@@ -370,10 +384,12 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	// with direct access to the data. We want to do that because this step is
 	// generally very cheap / fast, and transferring data is not worth the effort
 	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
-
+	log.Infof("Schedule tasks ===========1=======>SealCommit1, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+		log.Infof("Schedule tasks ========2==========>SealCommit1, sector :%v", sector)
 		p, err := w.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 		if err != nil {
+			log.Infof("Schedule tasks ========3==========>SealCommit1, sector :%v, err :%v", sector, err)
 			return err
 		}
 		out = p
@@ -384,10 +400,12 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 
 func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
 	selector := newTaskSelector()
-
+	log.Infof("Schedule tasks =============1=====>SealCommit2, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
+		log.Infof("Schedule tasks ==========2========>SealCommit2, sector :%v", sector)
 		p, err := w.SealCommit2(ctx, sector, phase1Out)
 		if err != nil {
+			log.Infof("Schedule tasks ==========3========>SealCommit2, sector :%v,err :%v", sector, err)
 			return err
 		}
 		out = p
@@ -418,10 +436,11 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 	}
 
 	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
-
+	log.Infof("Schedule tasks ==========1========>FinalizeSector, sector :%v", sector)
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
 		schedFetch(sector, stores.FTCache|stores.FTSealed|unsealed, stores.PathSealing, stores.AcquireMove),
 		func(ctx context.Context, w Worker) error {
+			log.Infof("Schedule tasks ==========2========>FinalizeSector, sector :%v", sector)
 			return w.FinalizeSector(ctx, sector, keepUnsealed)
 		})
 	if err != nil {
