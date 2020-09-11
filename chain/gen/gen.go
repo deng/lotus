@@ -358,7 +358,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	if len(entries) == 0 {
+	if round > build.UpgradeSmokeHeight {
 		buf.Write(pts.MinTicket().VRFProof)
 	}
 
