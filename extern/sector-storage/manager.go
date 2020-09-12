@@ -357,7 +357,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
 	log.Infof("Schedule tasks ===========1=======>SealPreCommit2, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		log.Infof("Schedule tasks ==========2========>SealPreCommit2, sector :%v", sector)
