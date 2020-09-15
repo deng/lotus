@@ -2,12 +2,16 @@
 	path = extern/filecoin-ffi
 	url = https://github.com/filecoin-project/filecoin-ffi.git
 	branch = master
+	ignore=dirty
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
 	url = https://github.com/filecoin-project/serialization-vectors
+	ignore=dirty
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
+	ignore=dirty
 [submodule "extern/fil-blst"]
 	path = extern/fil-blst
 	url = https://github.com/filecoin-project/fil-blst.git
+	ignore=dirty
