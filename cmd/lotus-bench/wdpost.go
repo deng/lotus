@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-jsonrpc"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -93,7 +92,8 @@ var wdpostCmd = &cli.Command{
 			return err
 		}
 
-		sinfos, err := getProves(c)
+		sinfos, err := sectorsForProof(c, maddr)
+		//sinfos, err := getProves(c)
 		if len(sinfos) == 0 {
 			// nothing to prove..
 			return xerrors.Errorf(" nothing to prove..")
@@ -129,7 +129,7 @@ var wdpostCmd = &cli.Command{
 	},
 }
 
-func sectorsForProof(c *cli.Context, actor address.Address, allSectors bitfield.BitField) ([]saproof.SectorInfo, error) {
+func sectorsForProof(c *cli.Context, actor address.Address) ([]saproof.SectorInfo, error) {
 	//获取待认证的扇区
 	nodeApi, ncloser, err := lcli.GetFullNodeAPI(c)
 	if err != nil {
@@ -138,58 +138,50 @@ func sectorsForProof(c *cli.Context, actor address.Address, allSectors bitfield.
 	defer ncloser()
 
 	ctx := lcli.DaemonContext(c)
-	_, err = nodeApi.StateMinerPartitions(ctx, actor, c.Uint64("deadline-num"), types.EmptyTSK)
+	partitions, err := nodeApi.StateMinerPartitions(ctx, actor, c.Uint64("deadline-num"), types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting partitions: %w", err)
 	}
-	sset, err := nodeApi.StateMinerSectors(ctx, actor, nil, true, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-	if len(sset) == 0 {
-		log.Error("don't have any sectors")
-		return nil, nil
-	}
-	//for partIdx, partition := range partitions {
-	// TODO: Can do this in parallel
-	//toProve, err := partition.ActiveSectors()
-	//if err != nil {
-	//	return xerrors.Errorf("getting active sectors: %w", err)
-	//}
-	//toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
-	//if err != nil {
-	//	return  xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
-	//}
-	//ssi, err := sectorsForProof(nodeApi,ctx,actor,partition.Faults)
-	//if err != nil {
-	//	return nil,xerrors.Errorf("getting sorted sector info: %w", err)
-	//}
-	//if len(ssi) == 0 {
-	//	continue
-	//}
-	//sinfos = append(sinfos, ssi...)
-	//for _, si := range ssi {
-	//	sidToPart[si.SectorNumber] = partIdx
-	//}
-	//}
-
-	sectorByID := make(map[uint64]saproof.SectorInfo)
-	for _, sector := range sset {
-		sectorByID[uint64(sector.ID)] = saproof.SectorInfo{
-			SectorNumber: sector.ID,
-			SealedCID:    sector.Info.SealedCID,
-			SealProof:    sector.Info.SealProof,
-		}
-	}
 
 	proofSectors := make([]saproof.SectorInfo, 0)
-	if err := allSectors.ForEach(func(sectorNo uint64) error {
-		if info, found := sectorByID[sectorNo]; found {
-			proofSectors = append(proofSectors, info)
+	for _, partition := range partitions {
+
+		//toProve, err := partition.ActiveSectors()
+		//if err != nil {
+		//	return nil,xerrors.Errorf("getting active sectors: %w", err)
+		//}
+		//toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
+		//if err != nil {
+		//	return  nil,xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
+		//}
+		log.Errorf("toProve ActiveSectors : %v", partition.Sectors)
+		sset, err := nodeApi.StateMinerSectors(ctx, actor, &partition.Sectors, false, types.EmptyTSK)
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	}); err != nil {
-		return nil, xerrors.Errorf("iterating partition sector bitmap: %w", err)
+		if len(sset) == 0 {
+			continue
+		}
+		log.Errorf("toProve StateMinerSectors sectors : %d", len(sset))
+		sectorByID := make(map[uint64]saproof.SectorInfo, len(sset))
+		for _, sector := range sset {
+			switch int64(sector.ID) {
+			case 110, 150, 194, 201, 368, 390, 666, 737, 754, 1089, 1172, 1277, 1346, 1398, 1639, 1680, 1684, 1760, 1773, 1793, 1795, 1834, 1874, 1945, 246, 2109:
+				continue
+			}
+			sectorByID[uint64(sector.ID)] = saproof.SectorInfo{
+				SectorNumber: sector.ID,
+				SealedCID:    sector.Info.SealedCID,
+				SealProof:    sector.Info.SealProof,
+			}
+		}
+		for _, sector := range sectorByID {
+			proofSectors = append(proofSectors, sector)
+		}
+	}
+	if len(proofSectors) == 0 {
+		log.Error("don't have any sectors")
+		return nil, nil
 	}
 	return proofSectors, nil
 }
