@@ -2,6 +2,9 @@ package modules
 
 import (
 	"context"
+	"database/sql"
+	sqlds "github.com/ipfs/go-ds-sql"
+	pg "github.com/ipfs/go-ds-sql/postgres"
 
 	"go.uber.org/fx"
 
@@ -28,4 +31,17 @@ func KeyStore(lr repo.LockedRepo) (types.KeyStore, error) {
 
 func Datastore(r repo.LockedRepo) (dtypes.MetadataDS, error) {
 	return r.Datastore("/metadata")
+}
+
+func DataBase(url string) dtypes.MetadataDS {
+	//fmt.Sprintf("postgres://%s:%s@%s/postgres?sslmode=disable", "postgres", "123456", "192.168.0.34")
+	mydb, err := sql.Open("postgres", url)
+	if err != nil {
+		panic(err)
+		return nil
+	}
+	// Implement the Queries interface for your SQL impl.
+	// ...or use the provided PostgreSQL queries
+	queries := pg.NewQueries("metadata")
+	return sqlds.NewDatastore(mydb, queries)
 }

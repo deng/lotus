@@ -34,6 +34,7 @@ type StorageMiner struct {
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
+	Database   DatabaseConfig
 }
 
 type DealmakingConfig struct {
@@ -58,6 +59,10 @@ type SealingConfig struct {
 	MaxSealingSectorsForDeals uint64
 
 	WaitDealsDelay Duration
+}
+
+type DatabaseConfig struct {
+	Url string
 }
 
 type MinerFeeConfig struct {

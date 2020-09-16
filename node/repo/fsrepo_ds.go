@@ -1,8 +1,6 @@
 package repo
 
 import (
-	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -13,8 +11,7 @@ import (
 	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
-	sqlds "github.com/ipfs/go-ds-sql"
-	pg "github.com/ipfs/go-ds-sql/postgres"
+
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 )
 
@@ -22,7 +19,7 @@ type dsCtor func(path string) (datastore.Batching, error)
 
 var fsDatastores = map[string]dsCtor{
 	"chain":    chainBadgerDs,
-	"metadata": sqlDs,
+	"metadata": levelDs,
 
 	// Those need to be fast for large writes... but also need a really good GC :c
 	"staging": badgerDs, // miner specific
@@ -54,18 +51,6 @@ func levelDs(path string) (datastore.Batching, error) {
 		NoSync:      false,
 		Strict:      ldbopts.StrictAll,
 	})
-}
-
-func sqlDs(path string) (datastore.Batching, error) {
-	mydb, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/postgres?sslmode=disable", "postgres", "123456", "192.168.0.34"))
-	if err != nil {
-		return nil, err
-	}
-	// Implement the Queries interface for your SQL impl.
-	// ...or use the provided PostgreSQL queries
-	queries := pg.NewQueries("metadata")
-	ds := sqlds.NewDatastore(mydb, queries)
-	return ds, nil
 }
 
 func (fsr *fsLockedRepo) openDatastores() (map[string]datastore.Batching, error) {
