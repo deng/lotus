@@ -10,7 +10,19 @@ sdt0111=$(mktemp -d)
 sdt0222=$(mktemp -d)
 sdt0333=$(mktemp -d)
 
+sdt0111="/home/ubuntu/.sector-0" 
+sdt0222="/home/ubuntu/.sector-1" 
+sdt0333="/home/ubuntu/.sector-2" 
+
 staging=$(mktemp -d)
+staging="/home/ubuntu/.genesis" 
+
+rm -rf $sdt0111
+rm -rf $sdt0222
+rm -rf $sdt0333
+rm -rf $staging
+
+mkdir $staging
 
 make
 
@@ -43,6 +55,14 @@ make
 ldt0111=$(mktemp -d)
 ldt0222=$(mktemp -d)
 ldt0333=$(mktemp -d)
+
+ldt0111="/home/ubuntu/.lotus-0" 
+ldt0222="/home/ubuntu/.lotus-1" 
+ldt0333="/home/ubuntu/.lotus-2" 
+
+rm -rf $ldt0111
+rm -rf $ldt0222
+rm -rf $ldt0333
 
 sdlist=( "$sdt0111" "$sdt0222" "$sdt0333" )
 ldlist=( "$ldt0111" "$ldt0222" "$ldt0333" )
@@ -77,6 +97,14 @@ sleep 3
 mdt0111=$(mktemp -d)
 mdt0222=$(mktemp -d)
 mdt0333=$(mktemp -d)
+
+mdt0111="/home/ubuntu/.lotusminer-t01000" 
+mdt0222="/home/ubuntu/.lotusminer-t01001" 
+mdt0333="/home/ubuntu/.lotusminer-t01002" 
+
+rm -rf $mdt0111
+rm -rf $mdt0222
+rm -rf $mdt0333
 
 env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner init --genesis-miner --actor=t01000 --pre-sealed-sectors="${sdt0111}" --pre-sealed-metadata="${sdt0111}/pre-seal-t01000.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
 env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner run --nosync &
