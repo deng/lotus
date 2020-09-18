@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -34,6 +35,7 @@ type StorageMiner struct {
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
+	Database   DatabaseConfig
 }
 
 type DealmakingConfig struct {
@@ -58,6 +60,10 @@ type SealingConfig struct {
 	MaxSealingSectorsForDeals uint64
 
 	WaitDealsDelay Duration
+}
+
+type DatabaseConfig struct {
+	Url string
 }
 
 type MinerFeeConfig struct {
@@ -176,6 +182,9 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxPreCommitGasFee:  types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))), // 0.05
 			MaxCommitGasFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))),
 			MaxWindowPoStGasFee: types.FIL(types.FromFil(50)),
+		},
+		Database: DatabaseConfig{
+			Url: fmt.Sprintf("postgres://%s:%s@%s/postgres?sslmode=disable", "postgres", "123456", "127.0.0.1:5432"),
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
