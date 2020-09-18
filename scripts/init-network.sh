@@ -10,12 +10,12 @@ sdt0111=$(mktemp -d)
 sdt0222=$(mktemp -d)
 sdt0333=$(mktemp -d)
 
-sdt0111="/home/ubuntu/.sector-0" 
-sdt0222="/home/ubuntu/.sector-1" 
-sdt0333="/home/ubuntu/.sector-2" 
+sdt0111="${HOME}/.sector-0" 
+sdt0222="${HOME}/.sector-1" 
+sdt0333="${HOME}/.sector-2" 
 
 staging=$(mktemp -d)
-staging="/home/ubuntu/.genesis" 
+staging="${HOME}/.genesis" 
 
 rm -rf $sdt0111
 rm -rf $sdt0222
@@ -56,9 +56,9 @@ ldt0111=$(mktemp -d)
 ldt0222=$(mktemp -d)
 ldt0333=$(mktemp -d)
 
-ldt0111="/home/ubuntu/.lotus-0" 
-ldt0222="/home/ubuntu/.lotus-1" 
-ldt0333="/home/ubuntu/.lotus-2" 
+ldt0111="${HOME}/.lotus-0" 
+ldt0222="${HOME}/.lotus-1" 
+ldt0333="${HOME}/.lotus-2" 
 
 rm -rf $ldt0111
 rm -rf $ldt0222
@@ -98,9 +98,9 @@ mdt0111=$(mktemp -d)
 mdt0222=$(mktemp -d)
 mdt0333=$(mktemp -d)
 
-mdt0111="/home/ubuntu/.lotusminer-t01000" 
-mdt0222="/home/ubuntu/.lotusminer-t01001" 
-mdt0333="/home/ubuntu/.lotusminer-t01002" 
+mdt0111="${HOME}/.lotusminer-t01000" 
+mdt0222="${HOME}/.lotusminer-t01001" 
+mdt0333="${HOME}/.lotusminer-t01002" 
 
 rm -rf $mdt0111
 rm -rf $mdt0222
