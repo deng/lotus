@@ -98,13 +98,13 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker
+build: lotus lotus-miner lotus-worker lotus-seed lotus-shed
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker
+install: install-daemon install-miner install-worker install-seed install-shed
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
@@ -114,6 +114,12 @@ install-miner:
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
+
+install-seed:
+	install -C ./lotus-seed /usr/local/bin/lotus-seed
+
+install-shed:
+	install -C ./lotus-shed /usr/local/bin/lotus-shed
 
 # TOOLS
 

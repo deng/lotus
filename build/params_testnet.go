@@ -12,21 +12,23 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
+const UpgradeBreezeHeight = -1
+const BreezeGasTampingDuration = 0
+
+const UpgradeSmokeHeight = -1
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+	0: DrandMainnet,
 }
 
-const UpgradeBreezeHeight = 41280
-const BreezeGasTampingDuration = 120
-
-const UpgradeSmokeHeight = 51000
-
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(10 << 40)
+	//power.ConsensusMinerMinPower = big.NewInt(1 << 30)
+	power.ConsensusMinerMinPower = big.NewInt(8 << 20)
 	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg32GiBV1: {},
-		abi.RegisteredSealProof_StackedDrg64GiBV1: {},
+		abi.RegisteredSealProof_StackedDrg8MiBV1:   {},
+		abi.RegisteredSealProof_StackedDrg512MiBV1: {},
+		abi.RegisteredSealProof_StackedDrg32GiBV1:  {},
+		abi.RegisteredSealProof_StackedDrg64GiBV1:  {},
 	}
 }
 
