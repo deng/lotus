@@ -243,7 +243,12 @@ var initCmd = &cli.Command{
 			}
 		}
 
-		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
+		var metadataDS dtypes.MetadataDS = nil
+		postgresUrl := cctx.String(FlagPostgresURL)
+		if postgresUrl != "" {
+			metadataDS = modules.DataBase(postgresUrl)
+		}
+		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice, metadataDS); err != nil {
 			log.Errorf("Failed to initialize lotus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -391,7 +396,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealPr
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt, mds dtypes.MetadataDS) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -410,9 +415,22 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
-	mds, err := lr.Datastore("/metadata")
+	fsmds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
+	}
+
+	if mds == nil {
+		mds = fsmds
+	} else {
+		//check if init already
+		exist, err := mds.Has(datastore.NewKey("miner-address"))
+		if err != nil {
+			return err
+		}
+		if exist {
+			return xerrors.Errorf("miner-address exist")
+		}
 	}
 
 	var addr address.Address
@@ -530,7 +548,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
-
 	return nil
 }
 
