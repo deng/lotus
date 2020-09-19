@@ -38,8 +38,18 @@ func DataBase(url string) dtypes.MetadataDS {
 	mydb, err := sql.Open("postgres", url)
 	if err != nil {
 		panic(err)
-		return nil
 	}
+
+	_, err = mydb.Exec("CREATE TABLE IF NOT EXISTS metadata (key TEXT NOT NULL UNIQUE, data BYTEA)")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = mydb.Exec("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON metadata (key text_pattern_ops)")
+	if err != nil {
+		panic(err)
+	}
+
 	// Implement the Queries interface for your SQL impl.
 	// ...or use the provided PostgreSQL queries
 	queries := pg.NewQueries("metadata")

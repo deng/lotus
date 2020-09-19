@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/ipfs/go-datastore"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
+
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/ipfs/go-datastore"
 
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
@@ -120,7 +121,7 @@ var runCmd = &cli.Command{
 
 		initSectorNumber(r, cctx.Uint64("sector-start"), cctx.Bool("clear-sector"))
 		shutdownChan := make(chan struct{})
-
+		postgresurl := cctx.String(FlagPostgresURL)
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
@@ -131,6 +132,11 @@ var runCmd = &cli.Command{
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+				})),
+			node.ApplyIf(func(s *node.Settings) bool { return postgresurl != "" },
+				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
+					log.Infof("will use postgresql as the metadata")
+					return modules.DataBase(postgresurl), nil
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
