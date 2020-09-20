@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -104,7 +105,7 @@ var runCmd = &cli.Command{
 		}
 
 		shutdownChan := make(chan struct{})
-
+		postgresurl := cctx.String(FlagPostgresURL)
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
@@ -115,6 +116,11 @@ var runCmd = &cli.Command{
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+				})),
+			node.ApplyIf(func(s *node.Settings) bool { return postgresurl != "" },
+				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
+					log.Infof("will use postgresql as the metadata")
+					return modules.DataBase(postgresurl), nil
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
