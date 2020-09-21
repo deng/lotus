@@ -363,6 +363,60 @@ func Online() Option {
 			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
 			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
 		),
+		// dealer
+		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageDealer },
+			Override(new(api.Common), From(new(common.CommonAPI))),
+			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
+
+			Override(new(*stores.Index), stores.NewIndex),
+			Override(new(stores.SectorIndex), From(new(*stores.Index))),
+			Override(new(dtypes.MinerID), modules.MinerID),
+			Override(new(dtypes.MinerAddress), modules.MinerAddress),
+			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
+			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
+			//默认会启动一个调度器，现在调整为空对象
+			Override(new(*sectorstorage.Manager), modules.SectorStorageNil),
+			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+
+			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
+			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+
+			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+			//Override(new(*storage.Miner), modules.StorageDealer(config.DefaultStorageMiner().Fees)),
+			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
+
+			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
+			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
+			Override(new(dtypes.StagingDAG), modules.StagingDAG),
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
+			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
+			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
+			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
+			Override(new(dtypes.DealFilter), modules.BasicDealFilter(nil)),
+			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
+			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
+			Override(HandleRetrievalKey, modules.HandleRetrieval),
+			//不需要下载证明文件
+			//Override(GetParamsKey, modules.GetParams),
+			Override(HandleDealsKey, modules.HandleDeals),
+			Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.NewConsiderOnlineStorageDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.NewSetConsideringOnlineStorageDealsFunc),
+			Override(new(dtypes.ConsiderOnlineRetrievalDealsConfigFunc), modules.NewConsiderOnlineRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOnlineRetrievalDealsConfigFunc), modules.NewSetConsiderOnlineRetrievalDealsConfigFunc),
+			Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.NewStorageDealPieceCidBlocklistConfigFunc),
+			Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.NewSetStorageDealPieceCidBlocklistConfigFunc),
+			Override(new(dtypes.ConsiderOfflineStorageDealsConfigFunc), modules.NewConsiderOfflineStorageDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOfflineStorageDealsConfigFunc), modules.NewSetConsideringOfflineStorageDealsFunc),
+			Override(new(dtypes.ConsiderOfflineRetrievalDealsConfigFunc), modules.NewConsiderOfflineRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.NewSetConsiderOfflineRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
+			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
+			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
+			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+		),
 	)
 }
 
@@ -497,6 +551,7 @@ func Repo(r repo.Repo) Option {
 
 			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
 			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(isType(repo.StorageDealer), ConfigStorageDealer(c)),
 		)(settings)
 	}
 }

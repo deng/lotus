@@ -43,6 +43,7 @@ const (
 	_                 = iota // Default is invalid
 	FullNode RepoType = iota
 	StorageMiner
+	StorageDealer
 	Worker
 )
 
@@ -52,6 +53,8 @@ func defConfForType(t RepoType) interface{} {
 		return config.DefaultFullNode()
 	case StorageMiner:
 		return config.DefaultStorageMiner()
+	case StorageDealer:
+		return config.DefaultStorageDealer()
 	case Worker:
 		return &struct{}{}
 	default:

@@ -64,6 +64,7 @@ const (
 	NodeFull
 	NodeMiner
 	NodeWorker
+	NodeDealer
 )
 
 var RunningNodeType NodeType
@@ -74,6 +75,8 @@ func VersionForType(nodeType NodeType) (Version, error) {
 		return FullAPIVersion, nil
 	case NodeMiner:
 		return MinerAPIVersion, nil
+	case NodeDealer:
+		return DealerAPIVersion, nil
 	case NodeWorker:
 		return WorkerAPIVersion, nil
 	default:
@@ -86,6 +89,7 @@ var (
 	FullAPIVersion   = newVer(0, 15, 0)
 	MinerAPIVersion  = newVer(0, 14, 0)
 	WorkerAPIVersion = newVer(0, 14, 0)
+	DealerAPIVersion = newVer(0, 1, 0)
 )
 
 //nolint:varcheck,deadcode
