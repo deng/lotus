@@ -92,13 +92,20 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
+lotus-dealer: $(BUILD_DEPS)
+	rm -f lotus-dealer
+	go build $(GOFLAGS) -o lotus-dealer ./cmd/lotus-dealer
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-dealer -i ./build
+.PHONY: lotus-dealer
+BINS+=lotus-dealer
+
 lotus-gateway: $(BUILD_DEPS)
 	rm -f lotus-gateway
 	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker lotus-seed lotus-shed
+build: lotus lotus-miner lotus-worker lotus-seed lotus-shed lotus-dealer
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
@@ -120,6 +127,9 @@ install-seed:
 
 install-shed:
 	install -C ./lotus-shed /usr/local/bin/lotus-shed
+
+install-dealer:
+	install -C ./lotus-dealer /usr/local/bin/lotus-dealer
 
 # TOOLS
 

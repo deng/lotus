@@ -75,6 +75,8 @@ func flagForAPI(t repo.RepoType) string {
 		return "api"
 	case repo.StorageMiner:
 		return "miner-api"
+	case repo.StorageDealer:
+		return "dealer-api"
 	case repo.Worker:
 		return "worker-api"
 	default:
@@ -88,6 +90,8 @@ func flagForRepo(t repo.RepoType) string {
 		return "repo"
 	case repo.StorageMiner:
 		return "miner-repo"
+	case repo.StorageDealer:
+		return "dealer-repo"
 	case repo.Worker:
 		return "worker-repo"
 	default:
@@ -101,6 +105,8 @@ func envForRepo(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "MINER_API_INFO"
+	case repo.StorageDealer:
+		return "DEALER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	default:
@@ -115,6 +121,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "STORAGE_API_INFO"
+	case repo.StorageDealer:
+		return "DEALER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	default:

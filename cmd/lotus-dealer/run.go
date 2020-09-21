@@ -11,7 +11,6 @@ import (
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/prometheus/common/log"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -36,12 +35,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Usage: "2345",
-		},
-		&cli.BoolFlag{
-			Name:  "enable-gpu-proving",
-			Usage: "enable use of GPU for mining operations",
-			Value: true,
+			Usage: "2335",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -54,13 +48,6 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("enable-gpu-proving") {
-			err := os.Setenv("BELLMAN_NO_GPU", "true")
-			if err != nil {
-				return err
-			}
-		}
-
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -91,8 +78,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		minerRepoPath := cctx.String(FlagMinerRepo)
-		r, err := repo.NewFS(minerRepoPath)
+		dealerRepoPath := cctx.String(FlagDealerRepo)
+		r, err := repo.NewFS(dealerRepoPath)
 		if err != nil {
 			return err
 		}
@@ -102,14 +89,14 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-dealer init' to set it up", dealerRepoPath)
 		}
 
 		shutdownChan := make(chan struct{})
 		postgresurl := cctx.String(FlagPostgresURL)
-		var minerapi api.StorageMiner
+		var dealerapi api.StorageDealer
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi),
+			node.StorageDealer(&dealerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
@@ -140,7 +127,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+		if err := dealerapi.NetConnect(ctx, remoteAddrs); err != nil {
 			return err
 		}
 
@@ -154,14 +141,14 @@ var runCmd = &cli.Command{
 		mux := mux.NewRouter()
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerapi))
+		rpcServer.Register("Filecoin", apistruct.PermissionedStorDealerAPI(dealerapi))
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
+		mux.PathPrefix("/remote").HandlerFunc(dealerapi.(*impl.StorageDealerAPI).ServeRemote)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
-			Verify: minerapi.AuthVerify,
+			Verify: dealerapi.AuthVerify,
 			Next:   mux.ServeHTTP,
 		}
 

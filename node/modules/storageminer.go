@@ -211,6 +211,49 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	}
 }
 
+func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
+	return func(params StorageMinerParams) (*storage.Miner, error) {
+		var (
+			ds   = params.MetadataDS
+			mctx = params.MetricsCtx
+			lc   = params.Lifecycle
+			api  = params.API
+			h    = params.Host
+		)
+
+		maddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		sm, err := storage.NewDealer(api, maddr, worker, h, ds, fc)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				return sm.RunDealer(ctx)
+			},
+			OnStop: sm.StopDealer,
+		})
+
+		return sm, nil
+	}
+}
+
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {

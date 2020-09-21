@@ -36,3 +36,10 @@ func PermissionedWorkerAPI(a api.WorkerAPI) api.WorkerAPI {
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	return &out
 }
+
+func PermissionedStorDealerAPI(a api.StorageDealer) api.StorageDealer {
+	var out StorageDealerStruct
+	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
+	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
+	return &out
+}
