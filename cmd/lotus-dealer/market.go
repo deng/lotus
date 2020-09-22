@@ -67,7 +67,7 @@ var storageDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ var storageDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset storage deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ var setAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -252,7 +252,7 @@ var getAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ var dealsImportDataCmd = &cli.Command{
 	Usage:     "Manually import data for a deal",
 	ArgsUsage: "<proposal CID> <file>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -352,7 +352,7 @@ var dealsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ var getBlocklistCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -481,7 +481,7 @@ var setBlocklistCmd = &cli.Command{
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -527,7 +527,7 @@ var resetBlocklistCmd = &cli.Command{
 	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -542,7 +542,7 @@ var setSealDurationCmd = &cli.Command{
 	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
 	ArgsUsage: "<minutes>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -590,7 +590,7 @@ var transfersListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}

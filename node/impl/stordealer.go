@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -54,7 +55,11 @@ type StorageDealerAPI struct {
 }
 
 func (sm *StorageDealerAPI) ActorAddress(context.Context) (address.Address, error) {
-	return sm.Miner.Address(), nil
+	return sm.Miner.ActorAddress(), nil
+}
+
+func (sm *StorageDealerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {
+	return sm.SetExpectedSealDurationFunc(delay)
 }
 
 func (sm *StorageDealerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {

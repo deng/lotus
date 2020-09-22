@@ -250,6 +250,15 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMi
 	return client.NewStorageMinerRPC(ctx.Context, addr, headers, opts...)
 }
 
+func GetStorageDealerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageDealer, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.StorageDealer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewStorageDealerRPC(ctx.Context, addr, headers, opts...)
+}
+
 func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.Worker)
 	if err != nil {

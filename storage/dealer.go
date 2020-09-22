@@ -31,6 +31,7 @@ type storageDealerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
+//TODO: 使用Dealer替换Miner
 func NewDealer(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, feeCfg config.MinerFeeConfig) (*Miner, error) {
 	m := &Miner{
 		api:    api,
@@ -68,4 +69,8 @@ func (m *Miner) runPreflightChecksDealer(ctx context.Context) error {
 
 	log.Infof("starting up dealer with miner ID %s, worker addr %s", m.maddr, m.worker)
 	return nil
+}
+
+func (m *Miner) ActorAddress() address.Address {
+	return m.maddr
 }

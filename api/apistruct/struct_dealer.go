@@ -2,6 +2,7 @@ package apistruct
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -22,6 +23,8 @@ type StorageDealerStruct struct {
 		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
+
+		SectorSetExpectedSealDuration func(context.Context, time.Duration) error `perm:"write"`
 
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                                                 `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error)                                                                                                               `perm:"read"`
@@ -60,6 +63,10 @@ func (c *StorageDealerStruct) ActorSectorSize(ctx context.Context, addr address.
 
 func (c *StorageDealerStruct) MiningBase(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.MiningBase(ctx)
+}
+
+func (c *StorageDealerStruct) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {
+	return c.Internal.SectorSetExpectedSealDuration(ctx, delay)
 }
 
 func (c *StorageDealerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {

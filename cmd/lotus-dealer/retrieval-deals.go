@@ -39,7 +39,7 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List retrieval deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset retrieval deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ var retrievalSetAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ var retrievalGetAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -15,6 +16,10 @@ import (
 type StorageDealer interface {
 	Common
 	ActorAddress(context.Context) (address.Address, error)
+	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error)
+
+	// SectorSetExpectedSealDuration sets the expected time for a sector to seal
+	SectorSetExpectedSealDuration(context.Context, time.Duration) error
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
