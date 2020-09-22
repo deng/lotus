@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/support/mock"
 	atesting "github.com/filecoin-project/specs-actors/support/testing"
 )
@@ -46,7 +47,7 @@ func TestMutateStateInTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
@@ -72,7 +73,7 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
@@ -99,7 +100,7 @@ func TestMutateStateReadonly(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.Create(&State{})
+	rt.StateCreate(&State{})
 
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
@@ -149,5 +150,30 @@ func TestAbortWithUncontrolled(t *testing.T) {
 			Uncontrolled: true,
 		})
 	})
+	rt.Verify()
+}
+
+func TestInspectRuntime(t *testing.T) {
+	caller := atesting.NewIDAddr(t, 100)
+	receiver := atesting.NewIDAddr(t, 101)
+	builder := mock.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	rt.SetCaller(caller, builtin.AccountActorCodeID)
+	rt.StateCreate(&State{})
+	var a Actor
+
+	rt.ExpectValidateCallerAny()
+	ret := rt.Call(a.InspectRuntime, abi.Empty)
+	rtr, ok := ret.(*InspectRuntimeReturn)
+	if !ok {
+		t.Fatal("invalid return value")
+	}
+	if rtr.Caller != caller {
+		t.Fatal("unexpected runtime caller")
+	}
+	if rtr.Receiver != receiver {
+		t.Fatal("unexpected runtime receiver")
+	}
 	rt.Verify()
 }
