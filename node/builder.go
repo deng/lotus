@@ -459,7 +459,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Dealmaking.Filter != "",
 			Override(new(dtypes.DealFilter), modules.BasicDealFilter(dealfilter.CliDealFilter(cfg.Dealmaking.Filter))),
 		),
-		Override(new(dtypes.MetadataDS), modules.DataBase(cfg.Database.Url)),
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
 		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
 	)
@@ -479,6 +478,7 @@ func Repo(r repo.Repo) Option {
 		return Options(
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
+			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
@@ -494,7 +494,7 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(isType(repo.FullNode), Override(new(dtypes.MetadataDS), modules.Datastore), ConfigFullNode(c)),
+			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
 			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
