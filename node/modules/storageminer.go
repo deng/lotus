@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"go.uber.org/fx"
@@ -189,23 +190,29 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
-		if err != nil {
-			return nil, err
-		}
-
 		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
 		if err != nil {
 			return nil, err
 		}
 
-		lc.Append(fx.Hook{
-			OnStart: func(context.Context) error {
-				go fps.Run(ctx)
-				return sm.Run(ctx)
-			},
-			OnStop: sm.Stop,
-		})
+		if val, ok := os.LookupEnv("LOTUS_MINER_DISABLE_WDPOST"); ok && (val == "true" || val == "1") {
+			fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
+			if err != nil {
+				return nil, err
+			}
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					go fps.Run(ctx)
+					return sm.Run(ctx)
+				},
+				OnStop: sm.Stop,
+			})
+		} else {
+			lc.Append(fx.Hook{
+				OnStart: sm.Run,
+				OnStop:  sm.Stop,
+			})
+		}
 
 		return sm, nil
 	}
