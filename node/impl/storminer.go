@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -492,6 +494,16 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 	}
 
 	return &ci, nil
+}
+
+// TODO: AddPieceOnDealComplete
+func (sm *StorageMinerAPI) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
+	return nil, xerrors.Errorf("no implement yet")
+}
+
+// TODO: LocatePieceForDealWithinSector
+func (sm *StorageMinerAPI) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
+	return nil, xerrors.Errorf("no implement yet")
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

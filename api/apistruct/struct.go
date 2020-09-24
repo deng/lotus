@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
@@ -27,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -315,6 +317,9 @@ type StorageMinerStruct struct {
 		PiecesListCidInfos func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
 		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
+
+		AddPieceOnDealComplete         func(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) `perm:"admin"`
+		LocatePieceForDealWithinSector func(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error)                   `perm:"admin"`
 	}
 }
 
@@ -1243,6 +1248,14 @@ func (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid ci
 
 func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
 	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
+}
+
+func (c *StorageMinerStruct) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
+	return c.Internal.AddPieceOnDealComplete(ctx, size, r, d)
+}
+
+func (c *StorageMinerStruct) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
+	return c.Internal.LocatePieceForDealWithinSector(ctx, dealID, encodedTs)
 }
 
 // WorkerStruct

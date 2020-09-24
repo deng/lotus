@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"io"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -10,12 +11,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -101,6 +104,19 @@ type StorageMiner interface {
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)
 	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)
+
+	// TODO: 下面这两个方法需要移动到单独的sealing接口中
+	AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error)
+
+	LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*LocatePieceResult, error)
+
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error)
+}
+
+type LocatePieceResult struct {
+	SectorID abi.SectorNumber
+	Offset   abi.PaddedPieceSize
+	Length   abi.PaddedPieceSize
 }
 
 type SealRes struct {

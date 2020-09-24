@@ -60,6 +60,6 @@ func ConfigStorageDealer(c interface{}) Option {
 			AllowCommit:        false,
 			AllowUnseal:        false,
 		}),
-		Override(new(*storage.Miner), modules.StorageDealer(cfg.Fees)),
+		Override(new(*storage.Dealer), modules.StorageDealer(cfg.Fees)),
 	)
 }

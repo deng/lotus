@@ -8,17 +8,35 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+type StorageDealerParams struct {
+	fx.In
+
+	Lifecycle          fx.Lifecycle
+	MetricsCtx         helpers.MetricsCtx
+	API                lapi.FullNode
+	SealingAPI         lapi.StorageMiner
+	Host               host.Host
+	MetadataDS         dtypes.MetadataDS
+	Sealer             sectorstorage.SectorManager
+	SectorIDCounter    sealing.SectorIDCounter
+	Verifier           ffiwrapper.Verifier
+	GetSealingConfigFn dtypes.GetSealingConfigFunc
+}
 
 func DealerSectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth) (*sectorstorage.Manager, error) {
 	return nil, nil

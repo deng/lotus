@@ -32,7 +32,7 @@ type StorageDealerAPI struct {
 
 	StorageProvider   storagemarket.StorageProvider
 	RetrievalProvider retrievalmarket.RetrievalProvider
-	Miner             *storage.Miner
+	Dealer            *storage.Dealer
 	Full              api.FullNode
 	StorageMgr        *sectorstorage.Manager `optional:"true"`
 	DataTransfer      dtypes.ProviderDataTransfer
@@ -55,7 +55,7 @@ type StorageDealerAPI struct {
 }
 
 func (sm *StorageDealerAPI) ActorAddress(context.Context) (address.Address, error) {
-	return sm.Miner.ActorAddress(), nil
+	return sm.Dealer.ActorAddress(), nil
 }
 
 func (sm *StorageDealerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {

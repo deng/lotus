@@ -53,6 +53,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 		defer ncloser()
+		sealingApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer scloser()
 		ctx := lcli.DaemonContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
@@ -111,6 +116,7 @@ var runCmd = &cli.Command{
 					return modules.DataBase(postgresurl), nil
 				})),
 			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(api.StorageMiner), sealingApi),
 		)
 		if err != nil {
 			return err

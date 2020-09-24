@@ -398,7 +398,7 @@ func Online() Option {
 			Override(new(dtypes.DealFilter), modules.BasicDealFilter(nil)),
 			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
-			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapterDealer),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			//不需要下载证明文件
 			//Override(GetParamsKey, modules.GetParams),

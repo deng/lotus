@@ -211,14 +211,15 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	}
 }
 
-func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
-	return func(params StorageMinerParams) (*storage.Miner, error) {
+func StorageDealer(fc config.MinerFeeConfig) func(params StorageDealerParams) (*storage.Dealer, error) {
+	return func(params StorageDealerParams) (*storage.Dealer, error) {
 		var (
-			ds   = params.MetadataDS
-			mctx = params.MetricsCtx
-			lc   = params.Lifecycle
-			api  = params.API
-			h    = params.Host
+			ds         = params.MetadataDS
+			mctx       = params.MetricsCtx
+			lc         = params.Lifecycle
+			api        = params.API
+			sealingApi = params.SealingAPI
+			h          = params.Host
 		)
 
 		maddr, err := minerAddrFromDS(ds)
@@ -238,7 +239,7 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 			return nil, err
 		}
 
-		sm, err := storage.NewDealer(api, maddr, worker, h, ds, fc)
+		sm, err := storage.NewDealer(sealingApi, api, maddr, worker, h, ds, fc)
 		if err != nil {
 			return nil, err
 		}
