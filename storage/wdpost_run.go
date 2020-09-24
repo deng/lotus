@@ -432,7 +432,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		var postOut []proof.PoStProof
 		somethingToProve := true
 
-		for retries := 0; retries < 5; retries++ {
+		for retries := 0; retries < 2; retries++ {
 			var partitions []miner.PoStPartition
 			var sinfos []proof.SectorInfo
 			for partIdx, partition := range batch {
@@ -496,6 +496,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				"chain-random", rand,
 				"deadline", di,
 				"height", ts.Height(),
+				"sectors", len(sinfos),
 				"skipped", skipCount)
 
 			tsStart := build.Clock.Now()
@@ -509,7 +510,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			postOut, ps, err = s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
 			elapsed := time.Since(tsStart)
 
-			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed)
+			log.Infow("computing window post",
+				"deadline", di.Index,
+				"batch", batchIdx,
+				"elapsed", elapsed)
 
 			if err == nil {
 				// Proof generation successful, stop retrying
