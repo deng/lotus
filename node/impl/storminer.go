@@ -506,4 +506,9 @@ func (sm *StorageMinerAPI) LocatePieceForDealWithinSector(ctx context.Context, d
 	return nil, xerrors.Errorf("no implement yet")
 }
 
+// TODO: UnsealSector
+func (sm *StorageMinerAPI) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	return nil, xerrors.Errorf("no implement yet")
+}
+
 var _ api.StorageMiner = &StorageMinerAPI{}

@@ -318,8 +318,9 @@ type StorageMinerStruct struct {
 		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
-		AddPieceOnDealComplete         func(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) `perm:"admin"`
-		LocatePieceForDealWithinSector func(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error)                   `perm:"admin"`
+		AddPieceOnDealComplete         func(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error)            `perm:"admin"`
+		LocatePieceForDealWithinSector func(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error)                              `perm:"admin"`
+		UnsealSector                   func(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) `perm:"admin"`
 	}
 }
 
@@ -1256,6 +1257,10 @@ func (c *StorageMinerStruct) AddPieceOnDealComplete(ctx context.Context, size ab
 
 func (c *StorageMinerStruct) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
 	return c.Internal.LocatePieceForDealWithinSector(ctx, dealID, encodedTs)
+}
+
+func (c *StorageMinerStruct) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	return c.Internal.UnsealSector(ctx, sectorID, offset, length)
 }
 
 // WorkerStruct

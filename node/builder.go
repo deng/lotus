@@ -391,7 +391,7 @@ func Online() Option {
 			//TODO: 确认这个服务的作用
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
-			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
+			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProviderDealer),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
