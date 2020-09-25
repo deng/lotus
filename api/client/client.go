@@ -81,3 +81,19 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 	return &res, closer, err
 }
+
+// NewStorageSealerRPC creates a new http jsonrpc client for sealer
+func NewStorageSealerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.StorageSealer, jsonrpc.ClientCloser, error) {
+	var res apistruct.StorageSealerStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.CommonStruct.Internal,
+			&res.Internal,
+		},
+		requestHeader,
+		jsonrpc.WithPingInterval(0),
+		jsonrpc.WithTimeout(0),
+	)
+
+	return &res, closer, err
+}

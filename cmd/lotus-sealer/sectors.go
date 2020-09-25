@@ -41,7 +41,7 @@ var sectorsPledgeCmd = &cli.Command{
 	Name:  "pledge",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ var sectorsStatusCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ var sectorsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List sectors",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -215,7 +215,7 @@ var sectorsRefsCmd = &cli.Command{
 	Name:  "refs",
 	Usage: "List References to sectors",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -251,7 +251,7 @@ var sectorsRemoveCmd = &cli.Command{
 		if !cctx.Bool("really-do-it") {
 			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -279,7 +279,7 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -300,7 +300,7 @@ var sectorsStartSealCmd = &cli.Command{
 	Usage:     "Manually start sealing a sector (filling any unused space with junk)",
 	ArgsUsage: "<sectorNum>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -324,7 +324,7 @@ var sectorsSealDelayCmd = &cli.Command{
 	Usage:     "Set the time, in minutes, that a new sector waits for deals before sealing starts",
 	ArgsUsage: "<minutes>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -356,7 +356,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 
-		mApi, mCloser, err := lcli.GetStorageMinerAPI(cctx)
+		mApi, mCloser, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -405,7 +405,7 @@ var sectorsUpdateCmd = &cli.Command{
 		if !cctx.Bool("really-do-it") {
 			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}

@@ -363,6 +363,32 @@ func Online() Option {
 			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
 			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
 		),
+		// miner
+		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageSealer },
+			Override(new(api.Common), From(new(common.CommonAPI))),
+			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
+
+			Override(new(*stores.Index), stores.NewIndex),
+			Override(new(stores.SectorIndex), From(new(*stores.Index))),
+			Override(new(dtypes.MinerID), modules.MinerID),
+			Override(new(dtypes.MinerAddress), modules.MinerAddress),
+			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
+			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
+			Override(new(*sectorstorage.Manager), modules.SectorStorage),
+			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+
+			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
+			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageMiner().Fees)),
+			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
+
+			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
+			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
+			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
+			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+		),
 	)
 }
 
@@ -383,6 +409,29 @@ func StorageMiner(out *api.StorageMiner) Option {
 		func(s *Settings) error {
 			resAPI := &impl.StorageMinerAPI{}
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
+			*out = resAPI
+			return nil
+		},
+	)
+}
+
+func StorageSealer(out *api.StorageSealer) Option {
+	return Options(
+		ApplyIf(func(s *Settings) bool { return s.Config },
+			Error(errors.New("the StorageSealer option must be set before Config option")),
+		),
+		ApplyIf(func(s *Settings) bool { return s.Online },
+			Error(errors.New("the StorageSealer option must be set before Online option")),
+		),
+
+		func(s *Settings) error {
+			s.nodeType = repo.StorageSealer
+			return nil
+		},
+
+		func(s *Settings) error {
+			resAPI := &impl.StorageSealerAPI{}
+			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
 			*out = resAPI
 			return nil
 		},
@@ -464,6 +513,20 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
+func ConfigStorageSealer(c interface{}) Option {
+	cfg, ok := c.(*config.StorageMiner)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
+	return Options(
+		ConfigCommon(&cfg.Common),
+
+		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(*storage.Miner), modules.StorageSealer(cfg.Fees)),
+	)
+}
+
 func Repo(r repo.Repo) Option {
 	return func(settings *Settings) error {
 		lr, err := r.Lock(settings.nodeType)
@@ -496,6 +559,7 @@ func Repo(r repo.Repo) Option {
 
 			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
 			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(isType(repo.StorageSealer), ConfigStorageSealer(c)),
 		)(settings)
 	}
 }

@@ -13,8 +13,6 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -38,7 +36,7 @@ var infoCmd = &cli.Command{
 func infoCmdAct(cctx *cli.Context) error {
 	color.NoColor = !cctx.Bool("color")
 
-	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 	if err != nil {
 		return err
 	}
@@ -151,32 +149,6 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	deals, err := nodeApi.MarketListIncompleteDeals(ctx)
-	if err != nil {
-		return err
-	}
-
-	var nactiveDeals, nVerifDeals, ndeals uint64
-	var activeDealBytes, activeVerifDealBytes, dealBytes abi.PaddedPieceSize
-	for _, deal := range deals {
-		ndeals++
-		dealBytes += deal.Proposal.PieceSize
-
-		if deal.State == storagemarket.StorageDealActive {
-			nactiveDeals++
-			activeDealBytes += deal.Proposal.PieceSize
-
-			if deal.Proposal.VerifiedDeal {
-				nVerifDeals++
-				activeVerifDealBytes += deal.Proposal.PieceSize
-			}
-		}
-	}
-
-	fmt.Printf("Deals: %d, %s\n", ndeals, types.SizeStr(types.NewInt(uint64(dealBytes))))
-	fmt.Printf("\tActive: %d, %s (Verified: %d, %s)\n", nactiveDeals, types.SizeStr(types.NewInt(uint64(activeDealBytes))), nVerifDeals, types.SizeStr(types.NewInt(uint64(activeVerifDealBytes))))
-	fmt.Println()
-
 	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
 	_, err = mas.UnlockVestedFunds(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), head.Height())
 	if err != nil {
@@ -276,7 +248,7 @@ func init() {
 	}
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
+func sectorsInfo(ctx context.Context, napi api.StorageSealer) error {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
 		return err

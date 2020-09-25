@@ -44,6 +44,7 @@ const (
 	FullNode RepoType = iota
 	StorageMiner
 	Worker
+	StorageSealer
 )
 
 func defConfForType(t RepoType) interface{} {
@@ -54,6 +55,8 @@ func defConfForType(t RepoType) interface{} {
 		return config.DefaultStorageMiner()
 	case Worker:
 		return &struct{}{}
+	case StorageSealer:
+		return config.DefaultStorageMiner()
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
 	}

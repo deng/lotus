@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/journal"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -158,7 +159,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking if repo exists")
 
-		repoPath := cctx.String(FlagMinerRepo)
+		repoPath := cctx.String(FlagSealerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
@@ -169,7 +170,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 		if ok {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagMinerRepo))
+			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagSealerRepo))
 		}
 
 		log.Info("Checking full node version")
@@ -242,7 +243,12 @@ var initCmd = &cli.Command{
 			}
 		}
 
-		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
+		var metadataDS dtypes.MetadataDS = nil
+		postgresUrl := cctx.String(FlagPostgresURL)
+		if postgresUrl != "" {
+			metadataDS = modules.DataBase(postgresUrl)
+		}
+		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice, metadataDS); err != nil {
 			log.Errorf("Failed to initialize lotus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -390,7 +396,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealPr
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt, mds dtypes.MetadataDS) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -409,9 +415,22 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
-	mds, err := lr.Datastore("/metadata")
+	fsmds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
+	}
+
+	if mds == nil {
+		mds = fsmds
+	} else {
+		//check if init already
+		exist, err := mds.Has(datastore.NewKey("miner-address"))
+		if err != nil {
+			return err
+		}
+		if exist {
+			return xerrors.Errorf("miner-address exist")
+		}
 	}
 
 	var addr address.Address
@@ -457,6 +476,12 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
 			if err != nil {
 				return err
+			}
+
+			if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
+				journal.J = jrnl
+			} else {
+				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}
 
 			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
@@ -523,7 +548,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
-
 	return nil
 }
 
