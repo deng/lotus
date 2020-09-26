@@ -186,12 +186,12 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(repo.StorageMiner); err != nil {
+		if err := r.Init(repo.StorageSealer); err != nil {
 			return err
 		}
 
 		{
-			lr, err := r.Lock(repo.StorageMiner)
+			lr, err := r.Lock(repo.StorageSealer)
 			if err != nil {
 				return err
 			}
@@ -397,7 +397,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealPr
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt, mds dtypes.MetadataDS) error {
-	lr, err := r.Lock(repo.StorageMiner)
+	lr, err := r.Lock(repo.StorageSealer)
 	if err != nil {
 		return err
 	}
