@@ -384,6 +384,7 @@ func Online() Option {
 			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageMiner().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
 			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
 			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
