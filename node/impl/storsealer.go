@@ -32,6 +32,9 @@ import (
 	"time"
 )
 
+var addPieceRetryWait = 5 * time.Minute
+var addPieceRetryTimeout = 6 * time.Hour
+
 type StorageSealerAPI struct {
 	common.CommonAPI
 
@@ -302,16 +305,95 @@ func (sm *StorageSealerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid
 	return &ci, nil
 }
 
-func (sm *StorageSealerAPI) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
-	return nil, nil
+func (sm *StorageSealerAPI) AddPieceOnDealComplete(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader, sdInfo sealing.DealInfo) (*storagemarket.PackingResult, error) {
+
+	p, offset, err := sm.SectorBlocks.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+	curTime := time.Now()
+	for time.Since(curTime) < addPieceRetryTimeout {
+		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			log.Errorf("failed to addPiece for deal %d, err: %w", sdInfo.DealID, err)
+			break
+		}
+		select {
+		case <-time.After(addPieceRetryWait):
+			p, offset, err = sm.SectorBlocks.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+		case <-ctx.Done():
+			return nil, xerrors.New("context expired while waiting to retry AddPiece")
+		}
+	}
+
+	if err != nil {
+		return nil, xerrors.Errorf("AddPiece failed: %s", err)
+	}
+	log.Warnf("New Deal: deal %d", sdInfo.DealID)
+
+	return &storagemarket.PackingResult{
+		SectorNumber: p,
+		Offset:       offset,
+		Size:         pieceSize.Padded(),
+	}, nil
 }
 
 func (sm *StorageSealerAPI) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
-	return nil, nil
+	refs, err := sm.SectorBlocks.GetRefs(dealID)
+	if err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return nil, xerrors.New("no sector information for deal ID")
+	}
+
+	// TODO: better strategy (e.g. look for already unsealed)
+	var best api.SealedRef
+	var bestSi sealing.SectorInfo
+	for _, r := range refs {
+		si, err := sm.SectorBlocks.Miner.GetSectorInfo(r.SectorID)
+		if err != nil {
+			return nil, xerrors.Errorf("getting sector info: %w", err)
+		}
+		if si.State == sealing.Proving {
+			best = r
+			bestSi = si
+			break
+		}
+	}
+	if bestSi.State == sealing.UndefinedSectorState {
+		return nil, xerrors.New("no sealed sector found")
+	}
+	return &api.LocatePieceResult{
+		SectorID: best.SectorID,
+		Offset:   best.Offset,
+		Length:   best.Size.Padded(),
+	}, nil
 }
 
 func (sm *StorageSealerAPI) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	return nil, nil
+	si, err := sm.Miner.GetSectorInfo(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	mid, err := address.IDFromAddress(sm.Miner.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	sid := abi.SectorID{
+		Miner:  abi.ActorID(mid),
+		Number: sectorID,
+	}
+
+	r, w := io.Pipe()
+	go func() {
+		var commD cid.Cid
+		if si.CommD != nil {
+			commD = *si.CommD
+		}
+		err := sm.IStorageMgr.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
+		_ = w.CloseWithError(err)
+	}()
+
+	return r, nil
 }
 
 var _ api.StorageSealer = &StorageSealerAPI{}
