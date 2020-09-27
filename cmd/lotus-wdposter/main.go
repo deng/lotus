@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage"
 	"os/signal"
@@ -289,9 +288,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting local storage config: %w", err)
 		}
 
-		provider, err := ffiwrapper.New(&basicfs.Provider{
-			Root: cfg.StoragePaths[0].Path,
-		}, &ffiwrapper.Config{
+		provider, err := ffiwrapper.New(NewLocalProvider(localStore, minerInfo.SealProofType), &ffiwrapper.Config{
 			SealProofType: minerInfo.SealProofType,
 		})
 		if err != nil {
