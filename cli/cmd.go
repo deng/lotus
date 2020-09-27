@@ -123,6 +123,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "STORAGE_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
+	case repo.StorageSealer:
+		return "SEALER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
