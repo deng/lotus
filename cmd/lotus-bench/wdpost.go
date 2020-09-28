@@ -9,7 +9,6 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
@@ -131,54 +130,54 @@ var wdpostCmd = &cli.Command{
 
 func sectorsForProof(c *cli.Context, actor address.Address) ([]saproof.SectorInfo, error) {
 	//获取待认证的扇区
-	nodeApi, ncloser, err := lcli.GetFullNodeAPI(c)
-	if err != nil {
-		return nil, err
-	}
-	defer ncloser()
-
-	ctx := lcli.DaemonContext(c)
-	partitions, err := nodeApi.StateMinerPartitions(ctx, actor, c.Uint64("deadline-num"), types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("getting partitions: %w", err)
-	}
+	//nodeApi, ncloser, err := lcli.GetFullNodeAPI(c)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer ncloser()
+	//
+	//ctx := lcli.DaemonContext(c)
+	//partitions, err := nodeApi.StateMinerPartitions(ctx, actor, c.Uint64("deadline-num"), types.EmptyTSK)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("getting partitions: %w", err)
+	//}
 
 	proofSectors := make([]saproof.SectorInfo, 0)
-	for _, partition := range partitions {
-
-		//toProve, err := partition.ActiveSectors()
-		//if err != nil {
-		//	return nil,xerrors.Errorf("getting active sectors: %w", err)
-		//}
-		//toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
-		//if err != nil {
-		//	return  nil,xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
-		//}
-		log.Errorf("toProve ActiveSectors : %v", partition.Sectors)
-		sset, err := nodeApi.StateMinerSectors(ctx, actor, &partition.Sectors, false, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-		if len(sset) == 0 {
-			continue
-		}
-		log.Errorf("toProve StateMinerSectors sectors : %d", len(sset))
-		sectorByID := make(map[uint64]saproof.SectorInfo, len(sset))
-		for _, sector := range sset {
-			switch int64(sector.ID) {
-			case 110, 150, 194, 201, 368, 390, 666, 737, 754, 1089, 1172, 1277, 1346, 1398, 1639, 1680, 1684, 1760, 1773, 1793, 1795, 1834, 1874, 1945, 246, 2109:
-				continue
-			}
-			sectorByID[uint64(sector.ID)] = saproof.SectorInfo{
-				SectorNumber: sector.ID,
-				SealedCID:    sector.Info.SealedCID,
-				SealProof:    sector.Info.SealProof,
-			}
-		}
-		for _, sector := range sectorByID {
-			proofSectors = append(proofSectors, sector)
-		}
-	}
+	//for _, partition := range partitions {
+	//
+	//	//toProve, err := partition.ActiveSectors()
+	//	//if err != nil {
+	//	//	return nil,xerrors.Errorf("getting active sectors: %w", err)
+	//	//}
+	//	//toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
+	//	//if err != nil {
+	//	//	return  nil,xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
+	//	//}
+	//	log.Errorf("toProve ActiveSectors : %v", partition.Sectors)
+	//	sset, err := nodeApi.StateMinerSectors(ctx, actor, &partition.Sectors, false, types.EmptyTSK)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	if len(sset) == 0 {
+	//		continue
+	//	}
+	//	log.Errorf("toProve StateMinerSectors sectors : %d", len(sset))
+	//	sectorByID := make(map[uint64]saproof.SectorInfo, len(sset))
+	//	for _, sector := range sset {
+	//		switch int64(sector.ID) {
+	//		case 110, 150, 194, 201, 368, 390, 666, 737, 754, 1089, 1172, 1277, 1346, 1398, 1639, 1680, 1684, 1760, 1773, 1793, 1795, 1834, 1874, 1945, 246, 2109:
+	//			continue
+	//		}
+	//		sectorByID[uint64(sector.ID)] = saproof.SectorInfo{
+	//			SectorNumber: sector.ID,
+	//			SealedCID:    sector.Info.SealedCID,
+	//			SealProof:    sector.Info.SealProof,
+	//		}
+	//	}
+	//	for _, sector := range sectorByID {
+	//		proofSectors = append(proofSectors, sector)
+	//	}
+	//}
 	if len(proofSectors) == 0 {
 		log.Error("don't have any sectors")
 		return nil, nil

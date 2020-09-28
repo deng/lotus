@@ -86,7 +86,7 @@ func main() {
 			proveCmd,
 			sealBenchCmd,
 			importBenchCmd,
-			wdpostCmd,
+			//wdpostCmd,
 		},
 	}
 
