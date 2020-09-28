@@ -6,10 +6,9 @@ package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 const UpgradeBreezeHeight = -1
@@ -21,17 +20,24 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
+const UpgradeIgnitionHeight = -2
+
+// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
+// Miners, clients, developers, custodians all need time to prepare.
+// We still have upgrades and state changes to do, but can happen after signaling timing here.
+const UpgradeLiftoffHeight = -3
+
 func init() {
-	//power.ConsensusMinerMinPower = big.NewInt(1 << 30)
-	power.ConsensusMinerMinPower = big.NewInt(8 << 20)
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg8MiBV1:   {},
-		abi.RegisteredSealProof_StackedDrg512MiBV1: {},
-		abi.RegisteredSealProof_StackedDrg32GiBV1:  {},
-		abi.RegisteredSealProof_StackedDrg64GiBV1:  {},
-	}
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(8 << 20))
+	policy.SetSupportedProofTypes(
+		abi.RegisteredSealProof_StackedDrg8MiBV1,
+		abi.RegisteredSealProof_StackedDrg512MiBV1,
+		abi.RegisteredSealProof_StackedDrg32GiBV1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1,
+	)
+	Devnet = false
 }
 
-const BlockDelaySecs = uint64(builtin.EpochDurationSeconds)
+const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
