@@ -120,7 +120,11 @@ var runCmd = &cli.Command{
 			node.ApplyIf(func(s *node.Settings) bool { return postgresurl != "" },
 				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
 					log.Infof("will use postgresql as the metadata")
-					return modules.DataBase(postgresurl), nil
+					db, err := modules.ConnetDataBase(postgresurl)
+					if err != nil {
+						return nil, err
+					}
+					return modules.DataBase(db), nil
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)

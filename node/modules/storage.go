@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	sqlds "github.com/ipfs/go-ds-sql"
 	pg "github.com/ipfs/go-ds-sql/postgres"
 
@@ -33,25 +34,29 @@ func Datastore(r repo.LockedRepo) (dtypes.MetadataDS, error) {
 	return r.Datastore("/metadata")
 }
 
-func DataBase(url string) dtypes.MetadataDS {
+func DataBase(mydb *sql.DB) dtypes.MetadataDS {
+	// Implement the Queries interface for your SQL impl.
+	// ...or use the provided PostgreSQL queries
+	return sqlds.NewDatastore(mydb, pg.NewQueries("metadata"))
+}
+
+func ConnetDataBase(url string) (*sql.DB, error) {
 	//fmt.Sprintf("postgres://%s:%s@%s/postgres?sslmode=disable", "postgres", "123456", "192.168.0.34")
 	mydb, err := sql.Open("postgres", url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	_, err = mydb.Exec("CREATE TABLE IF NOT EXISTS metadata (key TEXT NOT NULL UNIQUE, data BYTEA)")
+	_, err = mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", "metadata"))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	_, err = mydb.Exec("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON metadata (key text_pattern_ops)")
+	_, err = mydb.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON %s (key text_pattern_ops)", "metadata"))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	return mydb, nil
+}
 
-	// Implement the Queries interface for your SQL impl.
-	// ...or use the provided PostgreSQL queries
-	queries := pg.NewQueries("metadata")
-	return sqlds.NewDatastore(mydb, queries)
+func DisconnetDataBase(db *sql.DB) error {
+	return db.Close()
 }
