@@ -164,3 +164,26 @@ func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi
 		log.Warnf("not checking cache files of %s sectors for faults", ssize)
 	}
 }
+
+type LocalProvider struct {
+	localStore *stores.Local
+	spt        abi.RegisteredSealProof
+}
+
+func NewLocalProvider(local *stores.Local, spt abi.RegisteredSealProof) *LocalProvider {
+	return &LocalProvider{
+		local,
+		spt,
+	}
+}
+
+func (l *LocalProvider) AcquireSector(ctx context.Context, sid abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, ptype stores.PathType) (stores.SectorPaths, func(), error) {
+	out, _, err := l.localStore.AcquireSector(ctx, sid, l.spt, existing, allocate, ptype, stores.AcquireMove)
+	if err != nil {
+		return out, nil, err
+	}
+
+	done := func() {}
+
+	return out, done, nil
+}
