@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"os/signal"
 	"syscall"
@@ -208,8 +211,8 @@ var runCmd = &cli.Command{
 		log.Info("Opening local storage; connecting to master")
 		//todo 完善api功能
 		const unspecifiedAddress = "0.0.0.0"
-		address := cctx.String("listen")
-		addressSlice := strings.Split(address, ":")
+		addr := cctx.String("listen")
+		addressSlice := strings.Split(addr, ":")
 		if ip := net.ParseIP(addressSlice[0]); ip != nil {
 			if ip.String() == unspecifiedAddress {
 				timeout, err := time.ParseDuration("5s")
@@ -220,13 +223,13 @@ var runCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				address = rip + ":" + addressSlice[1]
+				addr = rip + ":" + addressSlice[1]
 			}
 		}
 
 		// Create / expose the worker
 		mux := mux.NewRouter()
-		log.Info("Setting up control endpoint at " + address)
+		log.Info("Setting up control endpoint at " + addr)
 		//readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		//rpcServer := jsonrpc.NewServer(readerServerOpt)
 		//rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
@@ -246,13 +249,13 @@ var runCmd = &cli.Command{
 				return ctx
 			},
 		}
-		nl, err := net.Listen("tcp", address)
+		nl, err := net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
 		//set token
 		{
-			a, err := net.ResolveTCPAddr("tcp", address)
+			a, err := net.ResolveTCPAddr("tcp", addr)
 			if err != nil {
 				return xerrors.Errorf("parsing address: %w", err)
 			}
@@ -279,7 +282,7 @@ var runCmd = &cli.Command{
 		//启动时空证明协程
 		//todo 能够切分扇区进行时空证明
 		index := stores.NewIndex()
-		localStore, err := stores.NewLocal(ctx, lr, index, []string{"http://" + address + "/remote"})
+		localStore, err := stores.NewLocal(ctx, lr, index, []string{"http://" + addr + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -304,6 +307,24 @@ var runCmd = &cli.Command{
 		}
 		go sched.Run(ctx)
 
+		//启动挖矿协程
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("getting id address: %w", err)
+		}
+		winProver, err := storage.NewWinningPoStProver(nodeApi, provider, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
+		if err != nil {
+			return xerrors.Errorf("getting winning post prover: %w", err)
+		}
+		ds, err := modules.Datastore(lr)
+		if err != nil {
+			return xerrors.Errorf("get metads err: %w", err)
+		}
+		winMiner := miner.NewMiner(nodeApi, winProver, maddr, modules.NewSlashFilter(ds))
+		if err := winMiner.Start(ctx); err != nil {
+			return xerrors.Errorf("winning miner err: %w", err)
+		}
+
 		//listen system signal
 		sigChan := make(chan os.Signal, 2)
 		go func() {
@@ -311,6 +332,7 @@ var runCmd = &cli.Command{
 			case <-sigChan:
 			}
 			log.Warn("Shutting down...")
+			winMiner.Stop(ctx)
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
 			}
