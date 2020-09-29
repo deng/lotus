@@ -404,7 +404,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 	var mds dtypes.MetadataDS
 	var ks types.KeyStore
-	var peerid peer.ID
 
 	if cctx.String(FlagPostgresURL) == "" {
 		//使用本地文件
@@ -431,7 +430,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			return xerrors.Errorf("make host key: %w", err)
 		}
 
-		peerid, err = peer.IDFromPrivateKey(p2pSk)
+		peerid, err := peer.IDFromPrivateKey(p2pSk)
 		if err != nil {
 			return xerrors.Errorf("peer ID from private key: %w", err)
 		}
@@ -546,34 +545,21 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			addr = a
 		}
 
-		log.Infof("Created new miner: %s", addr)
-		kbytes, err := p2pSk.Bytes()
-		if err != nil {
-			return err
-		}
-
-		if err := ks.Put(lp2p.KLibp2pHost, types.KeyInfo{
-			Type:       lp2p.KTLibp2pHost,
-			PrivateKey: kbytes,
-		}); err != nil {
-			return err
-		}
 		if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 			return err
 		}
 	} else {
 		//使用数据库
+		db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
+		if err != nil {
+			return err
+		}
+		defer db.Close()
 		if act != "" { //如果使用了 act 那么除非数据库没有 peerID,否则不需要链上确认
 			a, err := address.NewFromString(act)
 			if err != nil {
 				return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
 			}
-
-			db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
-			if err != nil {
-				return err
-			}
-			defer db.Close()
 
 			mds, err = modules.DataBase(db, act)
 			if err != nil {
@@ -598,46 +584,81 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			}
 
 			//获取peerID,如果有peerID就直接返回，没有的话就发送消息到链上
-			k, err := ks.Get(lp2p.KLibp2pHost)
+			if _, err = ks.Get(lp2p.KLibp2pHost); err != nil {
+				if err != types.ErrKeyInfoNotFound {
+					return err
+				}
+				//没有则生成一个新的 peerId
+				log.Info("Initializing libp2p identity")
+				p2pSk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+				if err != nil {
+					return err
+				}
+				peerid, err := peer.IDFromPrivateKey(p2pSk)
+				if err != nil {
+					return xerrors.Errorf("peer ID from private key: %w", err)
+				}
+				//通知链上更改peerId
+				if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
+					return xerrors.Errorf("failed to configure miner: %w", err)
+				}
+				//保存新的 peerId
+				kbytes, err := p2pSk.Bytes()
+				if err != nil {
+					return err
+				}
+				if err := ks.Put(lp2p.KLibp2pHost, types.KeyInfo{
+					Type:       lp2p.KTLibp2pHost,
+					PrivateKey: kbytes,
+				}); err != nil {
+					return err
+				}
+				if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
+					return err
+				}
+			}
+		} else {
+			//创建一个新actor
+			//生成一个peerId
+			log.Info("Initializing libp2p identity")
+			p2pSk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 			if err != nil {
 				return err
 			}
-
-			p2pSk, err := crypto.UnmarshalPrivateKey(k.PrivateKey)
-			if err != nil {
-				return xerrors.Errorf("make host key: %w", err)
-			}
-
-			peerid, err = peer.IDFromPrivateKey(p2pSk)
+			peerid, err := peer.IDFromPrivateKey(p2pSk)
 			if err != nil {
 				return xerrors.Errorf("peer ID from private key: %w", err)
 			}
-
-		} else {
-			if cctx.String(FlagPostgresURL) != "" {
-				db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
-				if err != nil {
-					return err
-				}
-				defer db.Close()
-
-				mds, err = modules.DataBase(db, addr.String())
-				if err != nil {
-					return err
-				}
-				ks, err = repo.NewDBKeyStore(db, addr.String())
-				if err != nil {
-					return err
-				}
+			//创建一个新的minerid
+			addr, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
+			if err != nil {
+				return xerrors.Errorf("creating miner failed: %w", err)
 			}
-		}
-		log.Info("Initializing libp2p identity")
-		p2pSk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-		if err != nil {
-			return err
+			//保存peerId
+			mds, err = modules.DataBase(db, addr.String())
+			if err != nil {
+				return err
+			}
+			ks, err = repo.NewDBKeyStore(db, addr.String())
+			if err != nil {
+				return err
+			}
+			kbytes, err := p2pSk.Bytes()
+			if err != nil {
+				return err
+			}
+			if err := ks.Put(lp2p.KLibp2pHost, types.KeyInfo{
+				Type:       lp2p.KTLibp2pHost,
+				PrivateKey: kbytes,
+			}); err != nil {
+				return err
+			}
+			if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+				return err
+			}
+			log.Infof("Created new miner: %s", addr)
 		}
 	}
-
 	return nil
 }
 

@@ -66,6 +66,15 @@ var runCmd = &cli.Command{
 			Value: false,
 		},
 	},
+	Before: func(cctx *cli.Context) error {
+		if cctx.String(FlagPostgresURL) != "" {
+			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
+			if cctx.String("actor") == "" {
+				return xerrors.Errorf("actor don't allow empty when use postgres")
+			}
+		}
+		return nil
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
