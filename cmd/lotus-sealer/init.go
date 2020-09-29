@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -399,9 +399,37 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	}
 	defer lr.Close() //nolint:errcheck
 
-	log.Info("Initializing libp2p identity")
+	var mds dtypes.MetadataDS
+	var ks types.KeyStore
 
-	p2pSk, err := makeHostKey(lr)
+	if cctx.String(FlagPostgresURL) != "" {
+		db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+
+		mds, err = modules.DataBase(db)
+		if err != nil {
+			return err
+		}
+		ks, err = repo.NewDBKeyStore(db)
+		if err != nil {
+			return err
+		}
+	} else {
+		mds, err = lr.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
+		ks, err = lr.KeyStore()
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Info("Initializing libp2p identity")
+	p2pSk, err := lp2p.PrivKey(ks)
 	if err != nil {
 		return xerrors.Errorf("make host key: %w", err)
 	}
@@ -410,22 +438,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	if err != nil {
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
-
-	var mds dtypes.MetadataDS
-	postgresUrl := cctx.String(FlagPostgresURL)
-	if postgresUrl != "" {
-		db, err := modules.ConnetDataBase(postgresUrl)
-		if err != nil {
-			return err
-		}
-		mds = modules.DataBase(db)
-	} else {
-		mds, err = lr.Datastore("/metadata")
-		if err != nil {
-			return err
-		}
-	}
-
 	//check if init already
 	exist, err := mds.Has(datastore.NewKey("miner-address"))
 	if err != nil {
@@ -551,32 +563,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return err
 	}
 	return nil
-}
-
-func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-
-	ks, err := lr.KeyStore()
-	if err != nil {
-		return nil, err
-	}
-
-	kbytes, err := pk.Bytes()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := ks.Put("libp2p-host", types.KeyInfo{
-		Type:       "libp2p-host",
-		PrivateKey: kbytes,
-	}); err != nil {
-		return nil, err
-	}
-
-	return pk, nil
 }
 
 func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID, gasPrice types.BigInt) error {

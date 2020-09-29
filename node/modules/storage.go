@@ -34,19 +34,10 @@ func Datastore(r repo.LockedRepo) (dtypes.MetadataDS, error) {
 	return r.Datastore("/metadata")
 }
 
-func DataBase(mydb *sql.DB) dtypes.MetadataDS {
+func DataBase(mydb *sql.DB) (dtypes.MetadataDS, error) {
 	// Implement the Queries interface for your SQL impl.
 	// ...or use the provided PostgreSQL queries
-	return sqlds.NewDatastore(mydb, pg.NewQueries("metadata"))
-}
-
-func ConnetDataBase(url string) (*sql.DB, error) {
-	//fmt.Sprintf("postgres://%s:%s@%s/postgres?sslmode=disable", "postgres", "123456", "192.168.0.34")
-	mydb, err := sql.Open("postgres", url)
-	if err != nil {
-		return nil, err
-	}
-	_, err = mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", "metadata"))
+	_, err := mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", "metadata"))
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +45,5 @@ func ConnetDataBase(url string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return mydb, nil
-}
-
-func DisconnetDataBase(db *sql.DB) error {
-	return db.Close()
+	return sqlds.NewDatastore(mydb, pg.NewQueries("metadata")), nil
 }

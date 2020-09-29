@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -121,7 +123,15 @@ var runCmd = &cli.Command{
 
 		initSectorNumber(r, cctx.Uint64("sector-start"), cctx.Bool("clear-sector"))
 		shutdownChan := make(chan struct{})
-		postgresurl := cctx.String(FlagPostgresURL)
+		var db *sql.DB = nil
+		if cctx.String(FlagPostgresURL) != "" {
+			log.Infof("will use postgresql as the metadata")
+			db, err = sql.Open("postgres", cctx.String(FlagPostgresURL))
+			if err != nil {
+				return err
+			}
+			defer db.Close()
+		}
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
@@ -133,14 +143,12 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
 				})),
-			node.ApplyIf(func(s *node.Settings) bool { return postgresurl != "" },
+			node.ApplyIf(func(s *node.Settings) bool { return db != nil },
 				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
-					log.Infof("will use postgresql as the metadata")
-					db, err := modules.ConnetDataBase(postgresurl)
-					if err != nil {
-						return nil, err
-					}
-					return modules.DataBase(db), nil
+					return modules.DataBase(db)
+				}),
+				node.Override(new(types.KeyStore), func() (types.KeyStore, error) {
+					return repo.NewDBKeyStore(db)
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
