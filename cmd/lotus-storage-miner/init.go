@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -393,6 +395,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market0.DealP
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
+	act := cctx.String("actor")
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -402,22 +405,8 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	var mds dtypes.MetadataDS
 	var ks types.KeyStore
 
-	if cctx.String(FlagPostgresURL) != "" {
-		db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		mds, err = modules.DataBase(db)
-		if err != nil {
-			return err
-		}
-		ks, err = repo.NewDBKeyStore(db)
-		if err != nil {
-			return err
-		}
-	} else {
+	if cctx.String(FlagPostgresURL) == "" {
+		//使用本地文件
 		mds, err = lr.Datastore("/metadata")
 		if err != nil {
 			return err
@@ -426,94 +415,107 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		if err != nil {
 			return err
 		}
-	}
-
-	log.Info("Initializing libp2p identity")
-	p2pSk, err := lp2p.PrivKey(ks)
-	if err != nil {
-		return xerrors.Errorf("make host key: %w", err)
-	}
-
-	peerid, err := peer.IDFromPrivateKey(p2pSk)
-	if err != nil {
-		return xerrors.Errorf("peer ID from private key: %w", err)
-	}
-
-	//check if init already
-	exist, err := mds.Has(datastore.NewKey("miner-address"))
-	if err != nil {
-		return err
-	}
-	if exist {
-		return xerrors.Errorf("miner-address exist")
-	}
-
-	var addr address.Address
-	if act := cctx.String("actor"); act != "" {
-		a, err := address.NewFromString(act)
+		//check if init already
+		exist, err := mds.Has(datastore.NewKey("miner-address"))
 		if err != nil {
-			return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
+			return err
+		}
+		if exist {
+			return xerrors.Errorf("miner-address exist")
+		}
+		log.Info("Initializing libp2p identity")
+
+		p2pSk, err := lp2p.PrivKey(ks)
+		if err != nil {
+			return xerrors.Errorf("make host key: %w", err)
 		}
 
-		if cctx.Bool("genesis-miner") {
-			if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
-				return err
-			}
-
-			spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+		peerid, err := peer.IDFromPrivateKey(p2pSk)
+		if err != nil {
+			return xerrors.Errorf("peer ID from private key: %w", err)
+		}
+		var addr address.Address
+		if act != "" {
+			a, err := address.NewFromString(act)
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
 			}
 
-			mid, err := address.IDFromAddress(a)
-			if err != nil {
-				return xerrors.Errorf("getting id address: %w", err)
-			}
-
-			sa, err := modules.StorageAuth(ctx, api)
-			if err != nil {
-				return err
-			}
-
-			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
-				SealProofType: spt,
-			}, sectorstorage.SealerConfig{
-				ParallelFetchLimit: 10,
-				AllowAddPiece:      true,
-				AllowPreCommit1:    true,
-				AllowPreCommit2:    true,
-				AllowCommit:        true,
-				AllowUnseal:        true,
-			}, nil, sa)
-			if err != nil {
-				return err
-			}
-			epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
-			if err != nil {
-				return err
-			}
-
-			if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
-				journal.J = jrnl
-			} else {
-				return fmt.Errorf("failed to open filesystem journal: %w", err)
-			}
-
-			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
-			{
-				if err := m.Start(ctx); err != nil {
-					return xerrors.Errorf("failed to start up genesis miner: %w", err)
+			if cctx.Bool("genesis-miner") {
+				if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
+					return err
 				}
 
-				cerr := configureStorageMiner(ctx, api, a, peerid, gasPrice)
-
-				if err := m.Stop(ctx); err != nil {
-					log.Error("failed to shut down miner: ", err)
+				spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
+				if err != nil {
+					return err
 				}
 
-				if cerr != nil {
-					return xerrors.Errorf("failed to configure miner: %w", cerr)
+				mid, err := address.IDFromAddress(a)
+				if err != nil {
+					return xerrors.Errorf("getting id address: %w", err)
 				}
+
+				sa, err := modules.StorageAuth(ctx, api)
+				if err != nil {
+					return err
+				}
+
+				smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
+					SealProofType: spt,
+				}, sectorstorage.SealerConfig{
+					ParallelFetchLimit: 10,
+					AllowAddPiece:      true,
+					AllowPreCommit1:    true,
+					AllowPreCommit2:    true,
+					AllowCommit:        true,
+					AllowUnseal:        true,
+				}, nil, sa)
+				if err != nil {
+					return err
+				}
+				epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
+				if err != nil {
+					return err
+				}
+
+				if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
+					journal.J = jrnl
+				} else {
+					return fmt.Errorf("failed to open filesystem journal: %w", err)
+				}
+
+				m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
+				{
+					if err := m.Start(ctx); err != nil {
+						return xerrors.Errorf("failed to start up genesis miner: %w", err)
+					}
+
+					cerr := configureStorageMiner(ctx, api, a, peerid, gasPrice)
+
+					if err := m.Stop(ctx); err != nil {
+						log.Error("failed to shut down miner: ", err)
+					}
+
+					if cerr != nil {
+						return xerrors.Errorf("failed to configure miner: %w", cerr)
+					}
+				}
+
+				if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+					pssb, err := homedir.Expand(pssb)
+					if err != nil {
+						return err
+					}
+
+					log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+					if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+						return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+					}
+				}
+
+				return nil
 			}
 
 			if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
@@ -529,39 +531,133 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 			}
 
-			return nil
+			if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
+				return xerrors.Errorf("failed to configure miner: %w", err)
+			}
+
+			addr = a
+		} else {
+			a, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
+			if err != nil {
+				return xerrors.Errorf("creating miner failed: %w", err)
+			}
+
+			addr = a
 		}
 
-		if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
-			pssb, err := homedir.Expand(pssb)
+		if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+			return err
+		}
+	} else {
+		//使用数据库
+		db, err := sql.Open("postgres", cctx.String(FlagPostgresURL))
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		if act != "" { //如果使用了 act 那么除非数据库没有 peerID,否则不需要链上确认
+			a, err := address.NewFromString(act)
+			if err != nil {
+				return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
+			}
+
+			mds, err = modules.DataBase(db, act)
+			if err != nil {
+				return err
+			}
+			ks, err = repo.NewDBKeyStore(db, act)
 			if err != nil {
 				return err
 			}
 
-			log.Infof("Importing pre-sealed sector metadata for %s", a)
+			if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+				pssb, err := homedir.Expand(pssb)
+				if err != nil {
+					return err
+				}
 
-			if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
-				return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+				log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+				}
 			}
+
+			//获取peerID,如果有peerID就直接返回，没有的话就发送消息到链上
+			if _, err = ks.Get(lp2p.KLibp2pHost); err != nil {
+				if err != types.ErrKeyInfoNotFound {
+					return err
+				}
+				//没有则生成一个新的 peerId
+				log.Info("Initializing libp2p identity")
+				p2pSk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+				if err != nil {
+					return err
+				}
+				peerid, err := peer.IDFromPrivateKey(p2pSk)
+				if err != nil {
+					return xerrors.Errorf("peer ID from private key: %w", err)
+				}
+				//通知链上更改peerId
+				if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
+					return xerrors.Errorf("failed to configure miner: %w", err)
+				}
+				//保存新的 peerId
+				kbytes, err := p2pSk.Bytes()
+				if err != nil {
+					return err
+				}
+				if err := ks.Put(lp2p.KLibp2pHost, types.KeyInfo{
+					Type:       lp2p.KTLibp2pHost,
+					PrivateKey: kbytes,
+				}); err != nil {
+					return err
+				}
+				if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
+					return err
+				}
+			}
+		} else {
+			//创建一个新actor
+			//生成一个peerId
+			log.Info("Initializing libp2p identity")
+			p2pSk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+			if err != nil {
+				return err
+			}
+			peerid, err := peer.IDFromPrivateKey(p2pSk)
+			if err != nil {
+				return xerrors.Errorf("peer ID from private key: %w", err)
+			}
+			//创建一个新的minerid
+			addr, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
+			if err != nil {
+				return xerrors.Errorf("creating miner failed: %w", err)
+			}
+			//保存peerId
+			mds, err = modules.DataBase(db, addr.String())
+			if err != nil {
+				return err
+			}
+			ks, err = repo.NewDBKeyStore(db, addr.String())
+			if err != nil {
+				return err
+			}
+			kbytes, err := p2pSk.Bytes()
+			if err != nil {
+				return err
+			}
+			if err := ks.Put(lp2p.KLibp2pHost, types.KeyInfo{
+				Type:       lp2p.KTLibp2pHost,
+				PrivateKey: kbytes,
+			}); err != nil {
+				return err
+			}
+			if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+				return err
+			}
+			log.Infof("Created new miner: %s", addr)
 		}
-
-		if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
-			return xerrors.Errorf("failed to configure miner: %w", err)
-		}
-
-		addr = a
-	} else {
-		a, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
-		if err != nil {
-			return xerrors.Errorf("creating miner failed: %w", err)
-		}
-
-		addr = a
-	}
-
-	log.Infof("Created new miner: %s", addr)
-	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
-		return err
 	}
 	return nil
 }

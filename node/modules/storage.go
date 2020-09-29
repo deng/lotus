@@ -34,16 +34,17 @@ func Datastore(r repo.LockedRepo) (dtypes.MetadataDS, error) {
 	return r.Datastore("/metadata")
 }
 
-func DataBase(mydb *sql.DB) (dtypes.MetadataDS, error) {
+func DataBase(mydb *sql.DB, miner string) (dtypes.MetadataDS, error) {
 	// Implement the Queries interface for your SQL impl.
 	// ...or use the provided PostgreSQL queries
-	_, err := mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", "metadata"))
+	table := "metadata_" + miner
+	_, err := mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", table))
 	if err != nil {
 		return nil, err
 	}
-	_, err = mydb.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON %s (key text_pattern_ops)", "metadata"))
+	_, err = mydb.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON %s (key text_pattern_ops)", table))
 	if err != nil {
 		return nil, err
 	}
-	return sqlds.NewDatastore(mydb, pg.NewQueries("metadata")), nil
+	return sqlds.NewDatastore(mydb, pg.NewQueries(table)), nil
 }

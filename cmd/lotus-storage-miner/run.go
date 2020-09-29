@@ -69,6 +69,15 @@ var runCmd = &cli.Command{
 			Value: false,
 		},
 	},
+	Before: func(cctx *cli.Context) error {
+		if cctx.String(FlagPostgresURL) != "" {
+			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
+			if cctx.String("actor") == "" {
+				return xerrors.Errorf("actor don't allow empty when use postgres")
+			}
+		}
+		return nil
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
@@ -145,10 +154,10 @@ var runCmd = &cli.Command{
 				})),
 			node.ApplyIf(func(s *node.Settings) bool { return db != nil },
 				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
-					return modules.DataBase(db)
+					return modules.DataBase(db, cctx.String("actor"))
 				}),
 				node.Override(new(types.KeyStore), func() (types.KeyStore, error) {
-					return repo.NewDBKeyStore(db)
+					return repo.NewDBKeyStore(db, cctx.String("actor"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
