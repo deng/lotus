@@ -21,6 +21,7 @@ import (
 var log = logging.Logger("main")
 
 const FlagMinerRepo = "miner-repo"
+const FlagPostgresURL = "postgres-url"
 
 // TODO remove after deprecation period
 const FlagMinerRepoDeprecation = "storagerepo"
@@ -82,6 +83,12 @@ func main() {
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+			&cli.StringFlag{
+				Name:    FlagPostgresURL,
+				EnvVars: []string{"POSTGRES_URL"},
+				Value:   "",
+				Usage:   "use PostgreSQL as the Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
 			},
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
