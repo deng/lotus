@@ -407,6 +407,8 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		if err != nil {
 			return err
 		}
+		defer db.Close()
+
 		mds, err = modules.DataBase(db)
 		if err != nil {
 			return err
