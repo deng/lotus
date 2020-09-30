@@ -116,6 +116,16 @@ var initCmd = &cli.Command{
 			Name:  "from",
 			Usage: "select which address to send actor creation message from",
 		},
+		&cli.Uint64Flag{
+			Name:  "sector-start",
+			Usage: "sector with start",
+			Value: 0,
+		},
+		&cli.BoolFlag{
+			Name:  "clear-sector",
+			Usage: "clear pre sector",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
@@ -583,6 +593,30 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 			}
 
+			if minSectorID := cctx.Uint64("sector-start"); minSectorID > 0 {
+				key := datastore.NewKey(modules.StorageCounterDSPrefix)
+				has, err := mds.Has(key)
+				if err != nil {
+					return err
+				}
+				var cur uint64 = 0
+				if has {
+					curBytes, err := mds.Get(key)
+					if err != nil {
+						return err
+					}
+					cur, _ = binary.Uvarint(curBytes)
+				}
+				if minSectorID > cur {
+					log.Infof("=========> init sector number : %d", minSectorID)
+					buf := make([]byte, binary.MaxVarintLen64)
+					size := binary.PutUvarint(buf, minSectorID)
+					if err := mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size]); err != nil {
+						return err
+					}
+				}
+			}
+
 			//获取peerID,如果有peerID就直接返回，没有的话就发送消息到链上
 			if _, err = ks.Get(lp2p.KLibp2pHost); err != nil {
 				if err != types.ErrKeyInfoNotFound {
@@ -594,14 +628,14 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				if err != nil {
 					return err
 				}
-				peerid, err := peer.IDFromPrivateKey(p2pSk)
-				if err != nil {
-					return xerrors.Errorf("peer ID from private key: %w", err)
-				}
-				//通知链上更改peerId
-				if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
-					return xerrors.Errorf("failed to configure miner: %w", err)
-				}
+				//peerid, err := peer.IDFromPrivateKey(p2pSk)
+				//if err != nil {
+				//	return xerrors.Errorf("peer ID from private key: %w", err)
+				//}
+				////通知链上更改peerId
+				//if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
+				//	return xerrors.Errorf("failed to configure miner: %w", err)
+				//}
 				//保存新的 peerId
 				kbytes, err := p2pSk.Bytes()
 				if err != nil {
