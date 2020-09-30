@@ -20,10 +20,8 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagMinerRepo = "miner-repo"
-
-// TODO remove after deprecation period
-const FlagMinerRepoDeprecation = "storagerepo"
+const FlagSealerRepo = "sealer-repo"
+const FlagPostgresURL = "postgres-url"
 
 func main() {
 	build.RunningNodeType = build.NodeMiner
@@ -84,23 +82,28 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
-				Name:    FlagMinerRepo,
-				Aliases: []string{FlagMinerRepoDeprecation},
-				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
-				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
-				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
+				Name:    FlagPostgresURL,
+				EnvVars: []string{"POSTGRES_URL"},
+				Value:   "",
+				Usage:   "use PostgreSQL as the Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
+			},
+			&cli.StringFlag{
+				Name:    FlagSealerRepo,
+				EnvVars: []string{"LOTUS_SEALER_PATH"},
+				Value:   "~/.lotussealer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner repo path"),
 			},
 		},
 
 		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
-	app.Metadata["repoType"] = repo.StorageMiner
+	app.Metadata["repoType"] = repo.StorageSealer
 
 	lcli.RunApp(app)
 }
 
-func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
+func getActorAddress(ctx context.Context, nodeAPI api.StorageSealer, overrideMaddr string) (maddr address.Address, err error) {
 	if overrideMaddr != "" {
 		maddr, err = address.NewFromString(overrideMaddr)
 		if err != nil {

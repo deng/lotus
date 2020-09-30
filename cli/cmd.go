@@ -77,6 +77,8 @@ func flagForAPI(t repo.RepoType) string {
 		return "miner-api"
 	case repo.Worker:
 		return "worker-api"
+	case repo.StorageSealer:
+		return "sealer-api"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -90,6 +92,8 @@ func flagForRepo(t repo.RepoType) string {
 		return "miner-repo"
 	case repo.Worker:
 		return "worker-repo"
+	case repo.StorageSealer:
+		return "sealer-repo"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -103,6 +107,8 @@ func envForRepo(t repo.RepoType) string {
 		return "MINER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
+	case repo.StorageSealer:
+		return "SEALER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -117,6 +123,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "STORAGE_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
+	case repo.StorageSealer:
+		return "SEALER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -249,6 +257,15 @@ func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error)
 	}
 
 	return client.NewWorkerRPC(ctx.Context, addr, headers)
+}
+
+func GetStorageSealerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageSealer, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.StorageSealer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewStorageSealerRPC(ctx.Context, addr, headers, opts...)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

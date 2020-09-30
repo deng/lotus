@@ -39,7 +39,7 @@ var sealingWorkersCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ var sealingJobsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -192,7 +192,7 @@ var sealingSchedDiagCmd = &cli.Command{
 	Name:  "sched-diag",
 	Usage: "Dump internal scheduler state",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}

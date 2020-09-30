@@ -78,6 +78,13 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
+lotus-sealer: $(BUILD_DEPS)
+	rm -f lotus-sealer
+	go build $(GOFLAGS) -o lotus-sealer ./cmd/lotus-sealer
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-sealer -i ./build
+.PHONY: lotus-sealer
+BINS+=lotus-sealer
+
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	go build $(GOFLAGS) -o lotus-worker ./cmd/lotus-seal-worker
@@ -105,7 +112,7 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker lotus-wdposter
+build: lotus lotus-miner lotus-sealer lotus-worker lotus-wdposter
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 

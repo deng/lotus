@@ -165,10 +165,17 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
-		var nodeApi api.StorageMiner
+		var nodeApi api.StorageSealer
 		var closer func()
 		var err error
 		for {
+			//优先获取SealerAPI,然后再获取MinerAPI
+			nodeApi, closer, err = lcli.GetStorageSealerAPI(cctx,
+				jsonrpc.WithNoReconnect(),
+				jsonrpc.WithTimeout(30*time.Second))
+			if err == nil {
+				break
+			}
 			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx,
 				jsonrpc.WithNoReconnect(),
 				jsonrpc.WithTimeout(30*time.Second))
@@ -430,7 +437,7 @@ var runCmd = &cli.Command{
 	},
 }
 
-func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageMiner) {
+func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageSealer) {
 	go func() {
 		closing, err := nodeApi.Closing(ctx)
 		if err != nil {

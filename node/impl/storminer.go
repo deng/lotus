@@ -3,6 +3,8 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -514,6 +516,21 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 	}
 
 	return &ci, nil
+}
+
+// TODO: AddPieceOnDealComplete
+func (sm *StorageMinerAPI) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
+	return nil, xerrors.Errorf("no implement yet")
+}
+
+// TODO: LocatePieceForDealWithinSector
+func (sm *StorageMinerAPI) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
+	return nil, xerrors.Errorf("no implement yet")
+}
+
+// TODO: UnsealSector
+func (sm *StorageMinerAPI) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	return nil, xerrors.Errorf("no implement yet")
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

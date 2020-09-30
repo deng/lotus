@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
-	"fmt"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"database/sql"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/ipfs/go-datastore"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -55,16 +53,15 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
-		&cli.Uint64Flag{
-			Name:  "sector-start",
-			Usage: "sector with start",
-			Value: 0,
-		},
-		&cli.BoolFlag{
-			Name:  "clear-sector",
-			Usage: "clear pre sector",
-			Value: false,
-		},
+	},
+	Before: func(cctx *cli.Context) error {
+		if cctx.String(FlagPostgresURL) != "" {
+			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
+			if cctx.String("actor") == "" {
+				return xerrors.Errorf("actor don't allow empty when use postgres")
+			}
+		}
+		return nil
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
@@ -104,7 +101,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		minerRepoPath := cctx.String(FlagMinerRepo)
+		minerRepoPath := cctx.String(FlagSealerRepo)
 		r, err := repo.NewFS(minerRepoPath)
 		if err != nil {
 			return err
@@ -118,12 +115,19 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
-		initSectorNumber(r, cctx.Uint64("sector-start"), cctx.Bool("clear-sector"))
 		shutdownChan := make(chan struct{})
-
-		var minerapi api.StorageMiner
+		var db *sql.DB = nil
+		if cctx.String(FlagPostgresURL) != "" {
+			log.Infof("will use postgresql as the metadata")
+			db, err = sql.Open("postgres", cctx.String(FlagPostgresURL))
+			if err != nil {
+				return err
+			}
+			defer db.Close()
+		}
+		var minerapi api.StorageSealer
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi),
+			node.StorageSealer(&minerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
@@ -131,6 +135,13 @@ var runCmd = &cli.Command{
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+				})),
+			node.ApplyIf(func(s *node.Settings) bool { return db != nil },
+				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
+					return modules.DataBase(db, cctx.String("actor"))
+				}),
+				node.Override(new(types.KeyStore), func() (types.KeyStore, error) {
+					return repo.NewDBKeyStore(db, cctx.String("actor"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
@@ -163,10 +174,10 @@ var runCmd = &cli.Command{
 		mux := mux.NewRouter()
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerapi))
+		rpcServer.Register("Filecoin", apistruct.PermissionedStorSealerAPI(minerapi))
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
+		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageSealerAPI).ServeRemote)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
@@ -179,8 +190,10 @@ var runCmd = &cli.Command{
 		sigChan := make(chan os.Signal, 2)
 		go func() {
 			select {
-			case <-sigChan:
+			case sig := <-sigChan:
+				log.Warnw("received shutdown", "signal", sig)
 			case <-shutdownChan:
+				log.Warn("received shutdown")
 			}
 
 			log.Warn("Shutting down...")
@@ -196,45 +209,4 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(manet.NetListener(lst))
 	},
-}
-
-func initSectorNumber(r repo.Repo, minSectorID uint64, clear bool) error {
-	lr, err := r.Lock(repo.StorageMiner)
-	if err != nil {
-		return err
-	}
-	defer lr.Close() //nolint:errcheck
-
-	mds, err := lr.Datastore("/metadata")
-	if err != nil {
-		return err
-	}
-	if clear {
-		for i := 0; i < 1000; i++ {
-			sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(i))
-			if err := mds.Delete(sectorKey); err != nil {
-				log.Infof("Delete %v", err)
-			}
-		}
-	}
-	key := datastore.NewKey(modules.StorageCounterDSPrefix)
-	has, err := mds.Has(key)
-	if err != nil {
-		return err
-	}
-	var cur uint64 = 0
-	if has {
-		curBytes, err := mds.Get(key)
-		if err != nil {
-			return err
-		}
-		cur, _ = binary.Uvarint(curBytes)
-	}
-	if cur > minSectorID {
-		return nil
-	}
-	log.Infof("=========> init sector number : %d", minSectorID)
-	buf := make([]byte, binary.MaxVarintLen64)
-	size := binary.PutUvarint(buf, minSectorID)
-	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
