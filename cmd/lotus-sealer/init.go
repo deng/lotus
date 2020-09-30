@@ -411,7 +411,10 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return err
 	}
 	defer lr.Close() //nolint:errcheck
-
+	_, err = lr.Datastore("/metadata")
+	if err != nil {
+		return err
+	}
 	var mds dtypes.MetadataDS
 	var ks types.KeyStore
 
