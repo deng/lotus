@@ -127,6 +127,9 @@ var initCmd = &cli.Command{
 			Value: false,
 		},
 	},
+	Subcommands: []*cli.Command{
+		initRestoreCmd,
+	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
 
