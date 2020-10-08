@@ -41,6 +41,8 @@ type StorageMiner interface {
 	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
 	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
 	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
+
+	CreateBackup(ctx context.Context, fpath string) error
 }
 
 type SealRes struct {
