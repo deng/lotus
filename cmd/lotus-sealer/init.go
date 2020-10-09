@@ -276,7 +276,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds, mfds dtypes.MetadataDS) error {
 	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
@@ -382,7 +382,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mfds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market0.DealProposal) (abi.DealID, error) {
@@ -411,33 +411,32 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return err
 	}
 	defer lr.Close() //nolint:errcheck
-	_, err = lr.Datastore("/metadata")
+
+	mfds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
 	}
+	//check if init already
+	exist, err := mfds.Has(datastore.NewKey("miner-address"))
+	if err != nil {
+		return err
+	}
+	if exist {
+		return xerrors.Errorf("miner-address exist")
+	}
+
 	var mds dtypes.MetadataDS
 	var ks types.KeyStore
 
 	if cctx.String(FlagPostgresURL) == "" {
 		//使用本地文件
-		mds, err = lr.Datastore("/metadata")
-		if err != nil {
-			return err
-		}
+		mds = mfds
 		ks, err = lr.KeyStore()
 		if err != nil {
 			return err
 		}
-		//check if init already
-		exist, err := mds.Has(datastore.NewKey("miner-address"))
-		if err != nil {
-			return err
-		}
-		if exist {
-			return xerrors.Errorf("miner-address exist")
-		}
-		log.Info("Initializing libp2p identity")
 
+		log.Info("Initializing libp2p identity")
 		p2pSk, err := lp2p.PrivKey(ks)
 		if err != nil {
 			return xerrors.Errorf("make host key: %w", err)
@@ -523,7 +522,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 					log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-					if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+					if err := migratePreSealMeta(ctx, api, pssb, a, mds, mfds); err != nil {
 						return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 					}
 				}
@@ -539,7 +538,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 				log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				if err := migratePreSealMeta(ctx, api, pssb, a, mds, mfds); err != nil {
 					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 				}
 			}
@@ -591,32 +590,8 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 
 				log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				if err := migratePreSealMeta(ctx, api, pssb, a, mds, mfds); err != nil {
 					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
-				}
-			}
-
-			if minSectorID := cctx.Uint64("sector-start"); minSectorID > 0 {
-				key := datastore.NewKey(modules.StorageCounterDSPrefix)
-				has, err := mds.Has(key)
-				if err != nil {
-					return err
-				}
-				var cur uint64 = 0
-				if has {
-					curBytes, err := mds.Get(key)
-					if err != nil {
-						return err
-					}
-					cur, _ = binary.Uvarint(curBytes)
-				}
-				if minSectorID > cur {
-					log.Infof("=========> init sector number : %d", minSectorID)
-					buf := make([]byte, binary.MaxVarintLen64)
-					size := binary.PutUvarint(buf, minSectorID)
-					if err := mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size]); err != nil {
-						return err
-					}
 				}
 			}
 
@@ -694,6 +669,36 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 			log.Infof("Created new miner: %s", addr)
+		}
+	}
+
+	minSectorID := cctx.Uint64("sector-start")
+
+	log.Infof("=========> set sector start : %d", minSectorID)
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, minSectorID)
+	if err := mfds.Put(datastore.NewKey(modules.StorageSectorStart), buf[:size]); err != nil {
+		return err
+	}
+	key := datastore.NewKey(modules.StorageCounterDSPrefix)
+	has, err := mfds.Has(key)
+	if err != nil {
+		return err
+	}
+	var cur uint64 = 0
+	if has {
+		curBytes, err := mfds.Get(key)
+		if err != nil {
+			return err
+		}
+		cur, _ = binary.Uvarint(curBytes)
+	}
+	if minSectorID > cur {
+		log.Infof("=========> set sector number : %d", minSectorID)
+		buf := make([]byte, binary.MaxVarintLen64)
+		size := binary.PutUvarint(buf, minSectorID)
+		if err := mfds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size]); err != nil {
+			return err
 		}
 	}
 	return nil

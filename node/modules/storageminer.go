@@ -145,7 +145,7 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 	return abi.SectorNumber(i), err
 }
 
-func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
+func SectorIDCounter(ds dtypes.MetadataFDS) sealing.SectorIDCounter {
 	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
 	return &sidsc{sc}
 }
@@ -158,6 +158,7 @@ type StorageMinerParams struct {
 	API                lapi.FullNode
 	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
+	MetadataFDS        dtypes.MetadataFDS
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
@@ -168,6 +169,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	return func(params StorageMinerParams) (*storage.Miner, error) {
 		var (
 			ds     = params.MetadataDS
+			fds    = params.MetadataFDS
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
 			api    = params.API
@@ -195,7 +197,11 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		start, err := minerStartSectorFromDS(fds)
+		if err != nil {
+			return nil, err
+		}
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, start)
 		if err != nil {
 			return nil, err
 		}

@@ -22,7 +22,7 @@ import (
 // MetadataDS stores metadata
 // dy default it's namespaced under /metadata in main repo datastore
 type MetadataDS datastore.Batching
-
+type MetadataFDS MetadataDS
 type ChainBlockstore blockstore.Blockstore
 
 type ChainGCLocker blockstore.GCLocker
