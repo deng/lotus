@@ -39,3 +39,6 @@ bin/ipget
 bin/tmp/*
 .idea
 scratchpad
+lotus-dealer
+lotus-sealer
+lotus-wdposter
