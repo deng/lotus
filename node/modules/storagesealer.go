@@ -1,17 +1,32 @@
 package modules
 
 import (
+	"encoding/binary"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/ipfs/go-datastore"
 	"go.uber.org/fx"
 )
+
+var StorageSectorStart = "sector-start"
+
+func minerStartSectorFromDS(fds dtypes.MetadataFDS) (uint64, error) {
+	curBytes, err := fds.Get(datastore.NewKey(StorageSectorStart))
+	if err != nil {
+		return 0, err
+	}
+	start, _ := binary.Uvarint(curBytes)
+	return start, nil
+}
 
 func StorageSealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
 	return func(params StorageMinerParams) (*storage.Miner, error) {
 		var (
 			ds     = params.MetadataDS
+			fds    = params.MetadataFDS
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
 			api    = params.API
@@ -38,8 +53,11 @@ func StorageSealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 		if err != nil {
 			return nil, err
 		}
-
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		start, err := minerStartSectorFromDS(fds)
+		if err != nil {
+			return nil, err
+		}
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, start)
 		if err != nil {
 			return nil, err
 		}
