@@ -684,13 +684,13 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return err
 	}
 	key := datastore.NewKey(modules.StorageCounterDSPrefix)
-	has, err := mds.Has(key)
+	has, err := mfds.Has(key)
 	if err != nil {
 		return err
 	}
 	var cur uint64 = 0
 	if has {
-		curBytes, err := mds.Get(key)
+		curBytes, err := mfds.Get(key)
 		if err != nil {
 			return err
 		}
@@ -700,7 +700,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		log.Infof("=========> set sector number : %d", minSectorID)
 		buf := make([]byte, binary.MaxVarintLen64)
 		size := binary.PutUvarint(buf, minSectorID)
-		if err := mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size]); err != nil {
+		if err := mfds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size]); err != nil {
 			return err
 		}
 	}
