@@ -170,6 +170,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
+		var rt repo.RepoType
 		var nodeApi api.StorageSealer
 		var closer func()
 		var err error
@@ -179,12 +180,14 @@ var runCmd = &cli.Command{
 				jsonrpc.WithNoReconnect(),
 				jsonrpc.WithTimeout(30*time.Second))
 			if err == nil {
+				rt = repo.StorageSealer
 				break
 			}
 			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx,
 				jsonrpc.WithNoReconnect(),
 				jsonrpc.WithTimeout(30*time.Second))
 			if err == nil {
+				rt = repo.StorageMiner
 				break
 			}
 			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
@@ -345,7 +348,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting proof type: %w", err)
 		}
 
-		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+		sminfo, err := lcli.GetAPIInfo(cctx, rt)
 		if err != nil {
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
@@ -418,7 +421,7 @@ var runCmd = &cli.Command{
 				return xerrors.Errorf("setting api endpoint: %w", err)
 			}
 
-			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+			ainfo, err := lcli.GetAPIInfo(cctx, rt)
 			if err != nil {
 				return xerrors.Errorf("could not get miner API info: %w", err)
 			}
@@ -493,8 +496,8 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageS
 }
 
 func extractRoutableIP(timeout time.Duration) (string, error) {
-	minerMultiAddrKey := "MINER_API_INFO"
-	deprecatedMinerMultiAddrKey := "STORAGE_API_INFO"
+	minerMultiAddrKey := "SEALER_API_INFO"
+	deprecatedMinerMultiAddrKey := "MINER_API_INFO"
 	env, ok := os.LookupEnv(minerMultiAddrKey)
 	if !ok {
 		// TODO remove after deprecation period
