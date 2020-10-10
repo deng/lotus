@@ -99,6 +99,13 @@ lotus-wdposter: $(BUILD_DEPS)
 .PHONY: lotus-wdposter
 BINS+=lotus-wdposter
 
+lotus-dealer: $(BUILD_DEPS)
+	rm -f lotus-dealer
+	go build $(GOFLAGS) -o lotus-dealer ./cmd/lotus-dealer
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-dealer -i ./build
+.PHONY: lotus-dealer
+BINS+=lotus-dealer
+
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
 	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
@@ -112,13 +119,13 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-sealer lotus-worker lotus-wdposter
+build: lotus lotus-miner lotus-sealer lotus-worker lotus-wdposter lotus-dealer
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker
+install: install-daemon install-miner install-worker install-dealer
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
@@ -128,6 +135,9 @@ install-miner:
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
+
+install-dealer:
+	install -C ./lotus-dealer /usr/local/bin/lotus-dealer
 
 # TOOLS
 

@@ -75,6 +75,8 @@ func flagForAPI(t repo.RepoType) string {
 		return "api"
 	case repo.StorageMiner:
 		return "miner-api"
+	case repo.StorageDealer:
+		return "dealer-api"
 	case repo.Worker:
 		return "worker-api"
 	case repo.StorageSealer:
@@ -90,6 +92,8 @@ func flagForRepo(t repo.RepoType) string {
 		return "repo"
 	case repo.StorageMiner:
 		return "miner-repo"
+	case repo.StorageDealer:
+		return "dealer-repo"
 	case repo.Worker:
 		return "worker-repo"
 	case repo.StorageSealer:
@@ -105,6 +109,8 @@ func envForRepo(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "MINER_API_INFO"
+	case repo.StorageDealer:
+		return "DEALER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	case repo.StorageSealer:
@@ -121,6 +127,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
 		return "STORAGE_API_INFO"
+	case repo.StorageDealer:
+		return "DEALER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	case repo.StorageSealer:
@@ -281,6 +289,15 @@ func GetStorageSealerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageS
 	}
 
 	return client.NewStorageSealerRPC(ctx.Context, addr, headers, opts...)
+}
+
+func GetStorageDealerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageDealer, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.StorageDealer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewStorageDealerRPC(ctx.Context, addr, headers, opts...)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
