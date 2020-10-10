@@ -45,6 +45,7 @@ const (
 	StorageMiner
 	Worker
 	StorageSealer
+	StorageDealer
 )
 
 func defConfForType(t RepoType) interface{} {
@@ -56,6 +57,8 @@ func defConfForType(t RepoType) interface{} {
 	case Worker:
 		return &struct{}{}
 	case StorageSealer:
+		return config.DefaultStorageMiner()
+	case StorageDealer:
 		return config.DefaultStorageMiner()
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
