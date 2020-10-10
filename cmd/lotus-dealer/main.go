@@ -95,7 +95,7 @@ func main() {
 		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
-	app.Metadata["repoType"] = repo.StorageSealer
+	app.Metadata["repoType"] = repo.StorageDealer
 
 	lcli.RunApp(app)
 }
