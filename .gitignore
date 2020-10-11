@@ -2,6 +2,8 @@
 /lotus-miner
 /lotus-dealer
 /lotus-worker
+/lotus-poster
+/lotus-sealer
 /lotus-seed
 /lotus-health
 /lotus-chainwatch
@@ -40,5 +42,3 @@ bin/ipget
 bin/tmp/*
 .idea
 scratchpad
-lotus-sealer
-lotus-wdposter
