@@ -92,12 +92,12 @@ lotus-worker: $(BUILD_DEPS)
 .PHONY: lotus-worker
 BINS+=lotus-worker
 
-lotus-wdposter: $(BUILD_DEPS)
-	rm -f lotus-wdposter
-	go build $(GOFLAGS) -o lotus-wdposter ./cmd/lotus-wdposter
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-wdposter -i ./build
-.PHONY: lotus-wdposter
-BINS+=lotus-wdposter
+lotus-poster: $(BUILD_DEPS)
+	rm -f lotus-poster
+	go build $(GOFLAGS) -o lotus-poster ./cmd/lotus-poster
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-poster -i ./build
+.PHONY: lotus-poster
+BINS+=lotus-poster
 
 lotus-dealer: $(BUILD_DEPS)
 	rm -f lotus-dealer
@@ -119,7 +119,7 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-sealer lotus-worker lotus-wdposter lotus-dealer
+build: lotus lotus-miner lotus-sealer lotus-worker lotus-poster lotus-dealer
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
