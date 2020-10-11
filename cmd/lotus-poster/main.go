@@ -37,7 +37,7 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagWdposterRepo = "wdposter-repo"
+const FlagWdposterRepo = "poster-repo"
 
 func main() {
 	build.RunningNodeType = build.NodeWorker //现在我们把这个wdpost服务当成一个worker来对待
@@ -46,7 +46,7 @@ func main() {
 		runCmd,
 		provingCmd,
 	}
-	jaeger := tracing.SetupJaegerTracing("lotus-wdposter")
+	jaeger := tracing.SetupJaegerTracing("lotus-poster")
 	defer func() {
 		if jaeger != nil {
 			jaeger.Flush()
@@ -70,20 +70,20 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:                 "lotus-wdposter",
+		Name:                 "lotus-poster",
 		Usage:                "Filecoin decentralized window poster",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWdposterRepo,
-				EnvVars: []string{"LOTUS_WDPOSTER_PATH", "WDPOSTER_PATH"},
-				Value:   "~/.lotuswdposter", // TODO: Consider XDG_DATA_HOME
+				EnvVars: []string{"LOTUS_POSTER_PATH", "POSTER_PATH"},
+				Value:   "~/.lotusposter", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify wdposter repo path. flag %s ", FlagWdposterRepo),
 			},
 			&cli.BoolFlag{
 				Name:  "enable-gpu-proving",
-				Usage: "enable use of GPU for wdpost operations",
+				Usage: "enable use of GPU for poster operations",
 				Value: true,
 			},
 			&cli.StringFlag{
