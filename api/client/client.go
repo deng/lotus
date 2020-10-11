@@ -2,15 +2,11 @@ package client
 
 import (
 	"context"
-	"net/http"
-	"net/url"
-	"path"
-
 	"github.com/filecoin-project/go-jsonrpc"
+	"net/http"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/lib/rpcenc"
 )
 
 // NewCommonRPC creates a new http jsonrpc client.
@@ -47,37 +43,20 @@ func NewStorageMinerRPC(ctx context.Context, addr string, requestHeader http.Hea
 			&res.Internal,
 		},
 		requestHeader,
-		jsonrpc.WithPingInterval(0),
-		jsonrpc.WithTimeout(0),
+		opts...,
 	)
 
 	return &res, closer, err
 }
 
-func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return nil, nil, err
-	}
-	switch u.Scheme {
-	case "ws":
-		u.Scheme = "http"
-	case "wss":
-		u.Scheme = "https"
-	}
-	///rpc/v0 -> /rpc/streams/v0/push
-
-	u.Path = path.Join(u.Path, "../streams/v0/push")
-
+func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
 	var res apistruct.WorkerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
 		},
 		requestHeader,
-		rpcenc.ReaderParamEncoder(u.String()),
-		jsonrpc.WithPingInterval(0),
-		jsonrpc.WithTimeout(0),
+		opts...,
 	)
 
 	return &res, closer, err
@@ -92,8 +71,7 @@ func NewStorageSealerRPC(ctx context.Context, addr string, requestHeader http.He
 			&res.Internal,
 		},
 		requestHeader,
-		jsonrpc.WithPingInterval(0),
-		jsonrpc.WithTimeout(0),
+		opts...,
 	)
 
 	return &res, closer, err
@@ -108,8 +86,7 @@ func NewStorageDealerRPC(ctx context.Context, addr string, requestHeader http.He
 			&res.Internal,
 		},
 		requestHeader,
-		jsonrpc.WithPingInterval(0),
-		jsonrpc.WithTimeout(0),
+		opts...,
 	)
 
 	return &res, closer, err
