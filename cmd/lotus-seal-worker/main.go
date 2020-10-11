@@ -177,15 +177,15 @@ var runCmd = &cli.Command{
 		for {
 			//优先获取SealerAPI,然后再获取MinerAPI
 			nodeApi, closer, err = lcli.GetStorageSealerAPI(cctx,
-				jsonrpc.WithNoReconnect(),
-				jsonrpc.WithTimeout(30*time.Second))
+				jsonrpc.WithPingInterval(0),
+				jsonrpc.WithTimeout(0))
 			if err == nil {
 				rt = repo.StorageSealer
 				break
 			}
 			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx,
-				jsonrpc.WithNoReconnect(),
-				jsonrpc.WithTimeout(30*time.Second))
+				jsonrpc.WithPingInterval(0),
+				jsonrpc.WithTimeout(0))
 			if err == nil {
 				rt = repo.StorageMiner
 				break
