@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -301,7 +302,12 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		sched, err := storage.NewWindowedPoStScheduler(nodeApi, config.MinerFeeConfig{}, provider, NewLocalFaultTracker(localStore, index), maddr, worker)
+		j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+		if err != nil {
+			return fmt.Errorf("failed to open filesystem journal: %w", err)
+		}
+
+		sched, err := storage.NewWindowedPoStScheduler(nodeApi, config.MinerFeeConfig{}, provider, NewLocalFaultTracker(localStore, index), j, maddr, worker)
 		if err != nil {
 			return err
 		}
@@ -320,7 +326,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("get metads err: %w", err)
 		}
-		winMiner := miner.NewMiner(nodeApi, winProver, maddr, modules.NewSlashFilter(ds))
+		winMiner := miner.NewMiner(nodeApi, winProver, maddr, modules.NewSlashFilter(ds), j)
 		if err := winMiner.Start(ctx); err != nil {
 			return xerrors.Errorf("winning miner err: %w", err)
 		}

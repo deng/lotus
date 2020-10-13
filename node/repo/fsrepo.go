@@ -43,9 +43,10 @@ const (
 	_                 = iota // Default is invalid
 	FullNode RepoType = iota
 	StorageMiner
-	Worker
 	StorageSealer
 	StorageDealer
+	Worker
+	Wallet
 )
 
 func defConfForType(t RepoType) interface{} {
@@ -54,12 +55,14 @@ func defConfForType(t RepoType) interface{} {
 		return config.DefaultFullNode()
 	case StorageMiner:
 		return config.DefaultStorageMiner()
-	case Worker:
-		return &struct{}{}
 	case StorageSealer:
 		return config.DefaultStorageMiner()
 	case StorageDealer:
 		return config.DefaultStorageMiner()
+	case Worker:
+		return &struct{}{}
+	case Wallet:
+		return &struct{}{}
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
 	}
@@ -99,6 +102,12 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	notexist := os.IsNotExist(err)
 	if notexist {
 		err = nil
+
+		_, err = os.Stat(filepath.Join(fsr.path, fsKeystore))
+		notexist = os.IsNotExist(err)
+		if notexist {
+			err = nil
+		}
 	}
 	return !notexist, err
 }

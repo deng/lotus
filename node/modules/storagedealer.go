@@ -21,6 +21,7 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			gsd    = params.GetSealingConfigFn
+			j      = params.Journal
 		)
 
 		maddr, err := minerAddrFromDS(ds)
@@ -43,7 +44,7 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 		if err != nil {
 			return nil, err
 		}
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, start)
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j, start)
 		if err != nil {
 			return nil, err
 		}
