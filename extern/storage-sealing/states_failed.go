@@ -341,6 +341,10 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 			return xerrors.Errorf("looking for publish deal message %s (sector %d, piece %d): %w", *p.DealInfo.PublishCid, sector.SectorNumber, i, err)
 		}
 
+		if ml == nil {
+			return xerrors.Errorf("looking for publish deal message %s (sector %d, piece %d): msglookup is nil", *p.DealInfo.PublishCid, sector.SectorNumber, i)
+		}
+
 		if ml.Receipt.ExitCode != exitcode.Ok {
 			return xerrors.Errorf("looking for publish deal message %s (sector %d, piece %d): non-ok exit code: %s", *p.DealInfo.PublishCid, sector.SectorNumber, i, ml.Receipt.ExitCode)
 		}
