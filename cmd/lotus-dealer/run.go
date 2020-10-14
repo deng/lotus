@@ -34,11 +34,11 @@ import (
 
 var runCmd = &cli.Command{
 	Name:  "run",
-	Usage: "Start a lotus miner process",
+	Usage: "Start a lotus dealer process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "miner-api",
-			Usage: "2345",
+			Name:  "api",
+			Usage: "2346",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
@@ -102,8 +102,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		minerRepoPath := cctx.String(FlagDealerRepo)
-		r, err := repo.NewFS(minerRepoPath)
+		dealerRepoPath := cctx.String(FlagDealerRepo)
+		r, err := repo.NewFS(dealerRepoPath)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-dealer init' to set it up", minerRepoPath)
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-dealer init' to set it up", dealerRepoPath)
 		}
 
 		shutdownChan := make(chan struct{})
@@ -126,16 +126,16 @@ var runCmd = &cli.Command{
 			}
 			defer db.Close()
 		}
-		var minerapi api.StorageDealer
+		var dealerapi api.StorageDealer
 		stop, err := node.New(ctx,
-			node.StorageDealer(&minerapi),
+			node.StorageDealer(&dealerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Online(),
 			node.Repo(r),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
+					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
 				})),
 			node.ApplyIf(func(s *node.Settings) bool { return db != nil },
 				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
@@ -161,7 +161,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting full node libp2p address: %w", err)
 		}
 
-		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+		if err := dealerapi.NetConnect(ctx, remoteAddrs); err != nil {
 			return xerrors.Errorf("connecting to full node (libp2p): %w", err)
 		}
 
@@ -175,14 +175,14 @@ var runCmd = &cli.Command{
 		mux := mux.NewRouter()
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", apistruct.PermissionedStorDealerAPI(minerapi))
+		rpcServer.Register("Filecoin", apistruct.PermissionedStorDealerAPI(dealerapi))
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageDealerAPI).ServeRemote)
+		mux.PathPrefix("/remote").HandlerFunc(dealerapi.(*impl.StorageDealerAPI).ServeRemote)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
-			Verify: minerapi.AuthVerify,
+			Verify: dealerapi.AuthVerify,
 			Next:   mux.ServeHTTP,
 		}
 

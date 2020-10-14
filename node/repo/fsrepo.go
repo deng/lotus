@@ -58,7 +58,7 @@ func defConfForType(t RepoType) interface{} {
 	case StorageSealer:
 		return config.DefaultStorageMiner()
 	case StorageDealer:
-		return config.DefaultStorageMiner()
+		return config.DefaultStorageDealer()
 	case Worker:
 		return &struct{}{}
 	case Wallet:
