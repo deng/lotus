@@ -385,7 +385,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	m.unsealedInfoMap.lk.Lock()
 	defer m.unsealedInfoMap.lk.Unlock()
 	for _, sector := range trackedSectors {
-		if uint64(sector.SectorNumber) < m.startSector || uint64(sector.SectorNumber) >= m.startSector+100000 {
+		if m.startSector != 0 && (uint64(sector.SectorNumber) < m.startSector || uint64(sector.SectorNumber) >= m.startSector+100000) {
 			continue
 		}
 
