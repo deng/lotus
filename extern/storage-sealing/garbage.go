@@ -47,21 +47,25 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
+		size := abi.PaddedPieceSize(2 << 10).Unpadded()
 
 		sid, err := m.sc.Next()
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
-		if uint64(sid) < m.startSector {
-			log.Errorf("don't allow sector count less than %d", m.startSector)
-			return
+
+		if m.startSector != 0 {
+			if uint64(sid) < m.startSector {
+				log.Errorf("don't allow sector count less than %d", m.startSector)
+				return
+			}
+			if uint64(sid) >= m.startSector+100000 {
+				log.Errorf("don't allow sector count mass than %d", m.startSector+100000)
+				return
+			}
 		}
-		if uint64(sid) >= m.startSector+100000 {
-			log.Errorf("don't allow sector count mass than %d", m.startSector+100000)
-			return
-		}
+
 		err = m.sealer.NewSector(ctx, m.minerSector(sid))
 		if err != nil {
 			log.Errorf("%+v", err)

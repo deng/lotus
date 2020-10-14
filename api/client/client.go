@@ -82,6 +82,7 @@ func NewStorageDealerRPC(ctx context.Context, addr string, requestHeader http.He
 	var res apistruct.StorageDealerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
+			&res.StorageSealerStruct.Internal,
 			&res.CommonStruct.Internal,
 			&res.Internal,
 		},

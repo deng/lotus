@@ -199,10 +199,14 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		start, err := minerStartSectorFromDS(fds)
-		if err != nil {
-			return nil, err
+		var start uint64 = 0
+		if _, ok := os.LookupEnv("POSTGRES_URL"); ok {
+			start, err = minerStartSectorFromDS(fds)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j, start)
 		if err != nil {
 			return nil, err
