@@ -424,7 +424,7 @@ func Online() Option {
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageMiner().Fees)),
+			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageDealer().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),

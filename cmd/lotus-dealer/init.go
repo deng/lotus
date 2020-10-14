@@ -30,7 +30,6 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
@@ -42,22 +41,18 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage"
 )
 
 var initCmd = &cli.Command{
 	Name:  "init",
-	Usage: "Initialize a lotus miner repo",
+	Usage: "Initialize a lotus dealer repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "actor",
@@ -128,7 +123,7 @@ var initCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		log.Info("Initializing lotus miner")
+		log.Info("Initializing lotus dealer")
 
 		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
 		if err != nil {
@@ -257,7 +252,7 @@ var initCmd = &cli.Command{
 		}
 
 		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
-			log.Errorf("Failed to initialize lotus-miner: %+v", err)
+			log.Errorf("Failed to initialize lotus-dealer: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
 				return err
@@ -266,11 +261,11 @@ var initCmd = &cli.Command{
 			if err := os.RemoveAll(path); err != nil {
 				log.Errorf("Failed to clean up failed storage repo: %s", err)
 			}
-			return xerrors.Errorf("Storage-miner init failed")
+			return xerrors.Errorf("Storage-dealer init failed")
 		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
-		log.Info("Miner successfully created, you can now start it with 'lotus-miner run'")
+		log.Info("Dealer successfully created, you can now start it with 'lotus-dealer run'")
 
 		return nil
 	},
@@ -294,7 +289,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 
 	meta, ok := psm[maddr.String()]
 	if !ok {
-		return xerrors.Errorf("preseal file didn't contain metadata for miner %s", maddr)
+		return xerrors.Errorf("preseal file didn't contain metadata for dealer %s", maddr)
 	}
 
 	maxSectorID := abi.SectorNumber(0)
@@ -453,82 +448,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
 			}
 
-			if cctx.Bool("genesis-miner") {
-				if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
-					return err
-				}
-
-				spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
-				if err != nil {
-					return err
-				}
-
-				mid, err := address.IDFromAddress(a)
-				if err != nil {
-					return xerrors.Errorf("getting id address: %w", err)
-				}
-
-				sa, err := modules.StorageAuth(ctx, api)
-				if err != nil {
-					return err
-				}
-
-				smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
-					SealProofType: spt,
-				}, sectorstorage.SealerConfig{
-					ParallelFetchLimit: 10,
-					AllowAddPiece:      true,
-					AllowPreCommit1:    true,
-					AllowPreCommit2:    true,
-					AllowCommit:        true,
-					AllowUnseal:        true,
-				}, nil, sa)
-				if err != nil {
-					return err
-				}
-				epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
-				if err != nil {
-					return err
-				}
-
-				j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
-				if err != nil {
-					return fmt.Errorf("failed to open filesystem journal: %w", err)
-				}
-
-				m := miner.NewMiner(api, epp, a, slashfilter.New(mds), j)
-				{
-					if err := m.Start(ctx); err != nil {
-						return xerrors.Errorf("failed to start up genesis miner: %w", err)
-					}
-
-					cerr := configureStorageMiner(ctx, api, a, peerid, gasPrice)
-
-					if err := m.Stop(ctx); err != nil {
-						log.Error("failed to shut down miner: ", err)
-					}
-
-					if cerr != nil {
-						return xerrors.Errorf("failed to configure miner: %w", cerr)
-					}
-				}
-
-				if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
-					pssb, err := homedir.Expand(pssb)
-					if err != nil {
-						return err
-					}
-
-					log.Infof("Importing pre-sealed sector metadata for %s", a)
-
-					if err := migratePreSealMeta(ctx, api, pssb, a, mds, mfds); err != nil {
-						return xerrors.Errorf("migrating presealed sector metadata: %w", err)
-					}
-				}
-
-				return nil
-			}
-
 			if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
 				pssb, err := homedir.Expand(pssb)
 				if err != nil {
@@ -542,15 +461,13 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 			}
 
-			if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
-				return xerrors.Errorf("failed to configure miner: %w", err)
-			}
+			//不对peerId进行任何操作，请从sealer目录中拷贝keystore文件。
 
 			addr = a
 		} else {
 			a, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
 			if err != nil {
-				return xerrors.Errorf("creating miner failed: %w", err)
+				return xerrors.Errorf("creating dealer failed: %w", err)
 			}
 
 			addr = a
