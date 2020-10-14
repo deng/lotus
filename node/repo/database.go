@@ -46,7 +46,7 @@ func (ds *DBKeyStore) List() ([]string, error) {
 
 // Get gets a key out of keystore and returns KeyInfo corresponding to named key
 func (ds *DBKeyStore) Get(k string) (types.KeyInfo, error) {
-	res := types.KeyInfo{Type: k, PrivateKey: make([]byte, 0)}
+	res := types.KeyInfo{Type: types.KeyType(k), PrivateKey: make([]byte, 0)}
 	rows, err := ds.db.Query(fmt.Sprintf("SELECT private_key FROM %s WHERE key_type = $1", ds.table), k)
 	if err != nil {
 		return res, fmt.Errorf("db key store get err :%v", err)
