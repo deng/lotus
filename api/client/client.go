@@ -118,3 +118,15 @@ func NewWalletRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 	return &res, closer, err
 }
+
+func NewPosterRPC(ctx context.Context, addr string, requestHeader http.Header) (api.PosterAPI, jsonrpc.ClientCloser, error) {
+	var res apistruct.PosterStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+	)
+
+	return &res, closer, err
+}

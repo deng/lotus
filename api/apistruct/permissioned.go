@@ -57,3 +57,9 @@ func PermissionedStorDealerAPI(a api.StorageDealer) api.StorageDealer {
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.StorageSealerStruct.Internal)
 	return &out
 }
+
+func PermissionedPosterAPI(a api.PosterAPI) api.PosterAPI {
+	var out PosterStruct
+	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
+	return &out
+}

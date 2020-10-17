@@ -262,6 +262,15 @@ func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error)
 	return client.NewWorkerRPC(ctx.Context, addr, headers)
 }
 
+func GetPosterAPI(ctx *cli.Context) (api.PosterAPI, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewPosterRPC(ctx.Context, addr, headers)
+}
+
 func GetGatewayAPI(ctx *cli.Context) (api.GatewayAPI, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
 	if err != nil {
