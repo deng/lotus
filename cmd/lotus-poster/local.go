@@ -393,6 +393,7 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, spt abi.Registere
 	}
 
 	found := false
+	var weight uint64 = 0
 	for _, path := range paths {
 		if !path.CanStore {
 			continue
@@ -400,12 +401,14 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, spt abi.Registere
 		if path.LocalPath == "" {
 			continue
 		}
+		if weight < path.Weight {
+			found = true
+			weight = path.Weight
+			storeID = path.ID
 
-		found = true
-		storeID = path.ID
-
-		stores.SetPathByType(&out, stores.FTSealed, filepath.Join(path.LocalPath, stores.FTSealed.String(), stores.SectorName(sid)))
-		stores.SetPathByType(&out, stores.FTCache, filepath.Join(path.LocalPath, stores.FTCache.String(), stores.SectorName(sid)))
+			stores.SetPathByType(&out, stores.FTSealed, filepath.Join(path.LocalPath, stores.FTSealed.String(), stores.SectorName(sid)))
+			stores.SetPathByType(&out, stores.FTCache, filepath.Join(path.LocalPath, stores.FTCache.String(), stores.SectorName(sid)))
+		}
 	}
 	if !found {
 		return stores.SectorPaths{}, nil, xerrors.New(fmt.Sprintf("don't find any sector %d", sid))
