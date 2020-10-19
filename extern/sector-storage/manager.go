@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -372,8 +373,11 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	if err := m.index.StorageLock(ctx, sector, stores.FTSealed, stores.FTCache); err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
-
-	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, false)
+	allowFetch := false
+	if val, ok := os.LookupEnv("P1_WITH_P2"); ok && (val == "true" || val == "1") {
+		allowFetch = true
+	}
+	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, allowFetch)
 	log.Infof("Schedule tasks ===========1=======>SealPreCommit2, sector :%v", sector)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		log.Infof("Schedule tasks ==========2========>SealPreCommit2, sector :%v", sector)
