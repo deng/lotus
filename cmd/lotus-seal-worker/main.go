@@ -120,6 +120,11 @@ var runCmd = &cli.Command{
 			Value: false,
 		},
 		&cli.BoolFlag{
+			Name:  "no-check-param",
+			Usage: "don't check param",
+			Value: false,
+		},
+		&cli.BoolFlag{
 			Name:  "addpiece",
 			Usage: "enable addpiece",
 			Value: true,
@@ -227,7 +232,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Bool("commit") {
+		if cctx.Bool("commit") && !cctx.Bool("no-check-param") {
 			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
