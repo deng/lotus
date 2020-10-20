@@ -102,6 +102,11 @@ var runCmd = &cli.Command{
 			Value: "0.0.0.0:3456",
 		},
 		&cli.StringFlag{
+			Name:  "outer-listen",
+			Usage: "host address and port the worker api will listen on outer",
+			Value: "0.0.0.0:3456",
+		},
+		&cli.StringFlag{
 			Name:   "address",
 			Hidden: true,
 		},
@@ -435,7 +440,11 @@ var runCmd = &cli.Command{
 		log.Info("Waiting for tasks")
 
 		go func() {
-			if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
+			outAddr := address
+			if cctx.String("outer-listen") != "" {
+				outAddr = cctx.String("outer-listen")
+			}
+			if err := nodeApi.WorkerConnect(ctx, "ws://"+outAddr+"/rpc/v0"); err != nil {
 				log.Errorf("Registering worker failed: %+v", err)
 				cancel()
 				return
@@ -480,6 +489,7 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageS
 			fmt.Sprintf("--enable-gpu-proving=%t", cctx.Bool("enable-gpu-proving")),
 			"run",
 			fmt.Sprintf("--listen=%s", cctx.String("listen")),
+			fmt.Sprintf("--outer-listen=%s", cctx.String("outer-listen")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
 			fmt.Sprintf("--no-swap=%t", cctx.Bool("no-swap")),
 			fmt.Sprintf("--addpiece=%t", cctx.Bool("addpiece")),

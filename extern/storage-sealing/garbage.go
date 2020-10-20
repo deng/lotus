@@ -14,15 +14,15 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 	}
 
 	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
-
+	fakePieceSize := abi.PaddedPieceSize(4 << 20).Unpadded()
 	out := make([]abi.PieceInfo, len(sizes))
-	for i, size := range sizes {
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(abi.PaddedPieceSize(4<<20).Unpadded()))
+	for i, _ := range sizes {
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, fakePieceSize, NewNullReader(fakePieceSize))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
 
-		existingPieceSizes = append(existingPieceSizes, size)
+		existingPieceSizes = append(existingPieceSizes, fakePieceSize)
 
 		out[i] = ppi
 	}
