@@ -47,7 +47,7 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
+		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
 		sid, err := m.sc.Next()
 		if err != nil {
@@ -71,9 +71,8 @@ func (m *Sealing) PledgeSector() error {
 			log.Errorf("%+v", err)
 			return
 		}
-		// use fake add piece
-		fakePieceSize := abi.PaddedPieceSize(4 << 20).Unpadded()
-		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, fakePieceSize)
+
+		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
