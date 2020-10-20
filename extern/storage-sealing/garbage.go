@@ -14,15 +14,15 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorID, exist
 	}
 
 	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
-	fakePieceSize := abi.PaddedPieceSize(4 << 20).Unpadded()
+
 	out := make([]abi.PieceInfo, len(sizes))
-	for i, _ := range sizes {
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, fakePieceSize, NewNullReader(fakePieceSize))
+	for i, size := range sizes {
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
 
-		existingPieceSizes = append(existingPieceSizes, fakePieceSize)
+		existingPieceSizes = append(existingPieceSizes, size)
 
 		out[i] = ppi
 	}
@@ -47,7 +47,7 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
+		abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
 		sid, err := m.sc.Next()
 		if err != nil {
@@ -71,8 +71,9 @@ func (m *Sealing) PledgeSector() error {
 			log.Errorf("%+v", err)
 			return
 		}
-
-		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, size)
+		// use fake add piece
+		fakePieceSize := abi.PaddedPieceSize(4 << 20).Unpadded()
+		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, fakePieceSize)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
