@@ -47,7 +47,7 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
+		abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
 		sid, err := m.sc.Next()
 		if err != nil {
