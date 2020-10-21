@@ -21,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/hashicorp/go-multierror"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 )
@@ -184,7 +183,6 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return si[i].Weight < si[j].Weight
 	})
 
-	var merr error
 	var remoteURL string
 	best := false
 	for _, info := range si {
@@ -215,19 +213,14 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 
 	err = r.fetch(ctx, remoteURL, tempDest)
 	if err != nil {
-		merr = multierror.Append(merr, xerrors.Errorf("fetch error %s -> %s: %w", remoteURL, tempDest, err))
-		return "", err
+		return "", xerrors.Errorf("fetch error %s -> %s: %w", remoteURL, tempDest, err)
 	}
 
 	if err := move(tempDest, dest); err != nil {
 		return "", xerrors.Errorf("fetch move error  %s -> %s: %w", tempDest, dest, err)
 	}
 
-	if merr != nil {
-		log.Warnw("acquireFromRemote encountered errors when fetching sector from remote", "errors", merr)
-	}
-
-	return "", xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
+	return remoteURL, nil
 }
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
