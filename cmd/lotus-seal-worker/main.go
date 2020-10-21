@@ -104,7 +104,7 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "outer-listen",
 			Usage: "host address and port the worker api will listen on outer",
-			Value: "0.0.0.0:3456",
+			Value: "",
 		},
 		&cli.StringFlag{
 			Name:   "address",
