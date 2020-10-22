@@ -383,7 +383,7 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, spt abi.Registere
 		storeID stores.ID
 	)
 	out, _, err = l.localStore.AcquireSector(ctx, sid, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
-	if err == nil {
+	if err == nil && (out.Sealed != "" && out.Cache != "") {
 		return out, nil, nil
 	}
 
