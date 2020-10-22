@@ -209,6 +209,9 @@ func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message,
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
 		}
+		if ret.GasCosts != nil {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
 		*trace = append(*trace, ir)
 		return nil
 	}
@@ -309,7 +312,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	var receipts []cbg.CBORMarshaler
-	processedMsgs := map[cid.Cid]bool{}
+	processedMsgs := make(map[cid.Cid]struct{})
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -333,7 +336,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 					return cid.Undef, cid.Undef, err
 				}
 			}
-			processedMsgs[m.Cid()] = true
+			processedMsgs[m.Cid()] = struct{}{}
 		}
 
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
@@ -426,12 +429,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet
 		parentEpoch = parent.Height
 	}
 
-	cids := make([]cid.Cid, len(blks))
-	for i, v := range blks {
-		cids[i] = v.Cid()
-	}
-
-	r := store.NewChainRand(sm.cs, cids)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
 	if err != nil {

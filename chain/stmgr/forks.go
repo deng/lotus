@@ -86,6 +86,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
+	}, {
+		Height:    build.UpgradeKumquatHeight,
+		Network:   network.Version6,
+		Migration: nil,
 	}}
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
@@ -498,7 +502,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 				Subcalls:   subcalls,
 			},
 			Duration: 0,
-			GasCosts: vm.ZeroGasOutputs(),
+			GasCosts: nil,
 		}); err != nil {
 			return cid.Undef, xerrors.Errorf("recording transfers: %w", err)
 		}
@@ -799,7 +803,7 @@ func splitGenesisMultisig(ctx context.Context, cb ExecCallback, addr address.Add
 				Subcalls:   subcalls,
 			},
 			Duration: 0,
-			GasCosts: vm.ZeroGasOutputs(),
+			GasCosts: nil,
 		}); err != nil {
 			return xerrors.Errorf("recording transfers: %w", err)
 		}
