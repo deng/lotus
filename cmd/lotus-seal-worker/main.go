@@ -104,7 +104,7 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "outer-listen",
 			Usage: "host address and port the worker api will listen on outer",
-			Value: "0.0.0.0:3456",
+			Value: "",
 		},
 		&cli.StringFlag{
 			Name:   "address",
@@ -346,8 +346,12 @@ var runCmd = &cli.Command{
 				address = rip + ":" + addressSlice[1]
 			}
 		}
+		outAddr := address
+		if cctx.String("outer-listen") != "" {
+			outAddr = cctx.String("outer-listen")
+		}
 
-		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + outAddr + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -366,7 +370,6 @@ var runCmd = &cli.Command{
 		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
 
 		// Create / expose the worker
-
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
@@ -445,10 +448,6 @@ var runCmd = &cli.Command{
 		log.Info("Waiting for tasks")
 
 		go func() {
-			outAddr := address
-			if cctx.String("outer-listen") != "" {
-				outAddr = cctx.String("outer-listen")
-			}
 			if err := nodeApi.WorkerConnect(ctx, "ws://"+outAddr+"/rpc/v0"); err != nil {
 				log.Errorf("Registering worker failed: %+v", err)
 				cancel()

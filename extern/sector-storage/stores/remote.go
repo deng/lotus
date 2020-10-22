@@ -12,6 +12,7 @@ import (
 	gopath "path"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/hashicorp/go-multierror"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 )
@@ -183,38 +183,44 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return si[i].Weight < si[j].Weight
 	})
 
-	var merr error
+	var remoteURL string
+	best := false
 	for _, info := range si {
 		// TODO: see what we have local, prefer that
-
+		if best {
+			break
+		}
 		for _, url := range info.URLs {
-			tempDest, err := tempFetchDest(dest, true)
-			if err != nil {
-				return "", err
+			remoteURL = url
+			if strings.Contains(url, ":6620") {
+				best = true
+				break
 			}
-
-			if err := os.RemoveAll(dest); err != nil {
-				return "", xerrors.Errorf("removing dest: %w", err)
-			}
-
-			err = r.fetch(ctx, url, tempDest)
-			if err != nil {
-				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
-				continue
-			}
-
-			if err := move(tempDest, dest); err != nil {
-				return "", xerrors.Errorf("fetch move error (storage %s) %s -> %s: %w", info.ID, tempDest, dest, err)
-			}
-
-			if merr != nil {
-				log.Warnw("acquireFromRemote encountered errors when fetching sector from remote", "errors", merr)
-			}
-			return url, nil
 		}
 	}
+	if remoteURL == "" {
+		return "", xerrors.Errorf("don't find any remote url")
+	}
 
-	return "", xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
+	tempDest, err := tempFetchDest(dest, true)
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.RemoveAll(dest); err != nil {
+		return "", xerrors.Errorf("removing dest: %w", err)
+	}
+
+	err = r.fetch(ctx, remoteURL, tempDest)
+	if err != nil {
+		return "", xerrors.Errorf("fetch error %s -> %s: %w", remoteURL, tempDest, err)
+	}
+
+	if err := move(tempDest, dest); err != nil {
+		return "", xerrors.Errorf("fetch move error  %s -> %s: %w", tempDest, dest, err)
+	}
+
+	return remoteURL, nil
 }
 
 func (r *Remote) fetch(ctx context.Context, url, outname string) error {
