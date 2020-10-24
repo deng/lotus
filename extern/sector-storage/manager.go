@@ -467,28 +467,44 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		return err
 	}
 
-	fetchSel := newAllocSelector(m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
-	moveUnsealed := unsealed
-	{
-		if len(keepUnsealed) == 0 {
-			moveUnsealed = stores.FTNone
-		}
-	}
-
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
-		schedFetch(sector, stores.FTCache|stores.FTSealed|moveUnsealed, stores.PathStorage, stores.AcquireMove),
-		func(ctx context.Context, w Worker) error {
-			return w.MoveStorage(ctx, sector, stores.FTCache|stores.FTSealed|moveUnsealed)
-		})
-	if err != nil {
-		return xerrors.Errorf("moving sector to storage: %w", err)
-	}
-
 	return nil
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
-	log.Warnw("ReleaseUnsealed todo")
+	log.Warnw("ReleaseUnsealed and move storage")
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTNone, stores.FTSealed|stores.FTUnsealed|stores.FTCache); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	unsealed := stores.FTUnsealed
+	{
+		unsealedStores, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, 0, false)
+		if err != nil {
+			return xerrors.Errorf("finding unsealed sector: %w", err)
+		}
+
+		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
+			unsealed = stores.FTNone
+		}
+	}
+	fetchSel := newAllocSelector(m.index, stores.FTCache|stores.FTSealed, stores.PathStorage)
+	moveUnsealed := unsealed
+	{
+		if len(safeToFree) == 0 {
+			moveUnsealed = stores.FTNone
+		}
+	}
+
+	if err := m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
+		schedFetch(sector, stores.FTCache|stores.FTSealed|moveUnsealed, stores.PathStorage, stores.AcquireMove),
+		func(ctx context.Context, w Worker) error {
+			return w.MoveStorage(ctx, sector, stores.FTCache|stores.FTSealed|moveUnsealed)
+		}); err != nil {
+		return xerrors.Errorf("moving sector to storage: %w", err)
+	}
 	return nil
 }
 
