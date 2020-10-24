@@ -508,9 +508,9 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
-	//if err = ffi.ClearCache(uint64(sb.ssize), paths.Cache); err != nil {
-	//	log.Warn("ClearCache error: ", err)
-	//}
+	if err = ffi.ClearCache(uint64(sb.ssize), paths.Cache); err != nil {
+		log.Warn("ClearCache error: ", err)
+	}
 	return output, nil
 }
 
