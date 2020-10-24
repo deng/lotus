@@ -172,7 +172,7 @@ var localCmd = &cli.Command{
 		posterApi := &LocalPoster{
 			localStore: localStore,
 			ls:         lr,
-			spt:        minerInfo.SealProofType,
+			ssize:      minerInfo.SectorSize,
 		}
 		mux := mux.NewRouter()
 		log.Info("Setting up control endpoint at " + addr)
@@ -300,10 +300,10 @@ func NewLocalFaultTracker(local *stores.Local, sindex stores.SectorIndex) *Local
 }
 
 // CheckProvable returns unprovable sectors
-func (l *LocalFaultTracker) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
+func (l *LocalFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
-	ssize, err := spt.SectorSize()
+	ssize, err := pp.SectorSize()
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (l *LocalFaultTracker) CheckProvable(ctx context.Context, spt abi.Registere
 				return nil
 			}
 
-			lp, lpDone, err := l.AcquireSector(ctx, spt, sector)
+			lp, lpDone, err := l.AcquireSector(ctx, ssize, sector)
 			//lp, _, err := l.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
@@ -376,13 +376,13 @@ func (l *LocalFaultTracker) CheckProvable(ctx context.Context, spt abi.Registere
 	return bad, nil
 }
 
-func (l *LocalFaultTracker) AcquireSector(ctx context.Context, spt abi.RegisteredSealProof, sid abi.SectorID) (stores.SectorPaths, func(), error) {
+func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorSize, sid abi.SectorID) (stores.SectorPaths, func(), error) {
 	var (
 		out     stores.SectorPaths
 		err     error
 		storeID stores.ID
 	)
-	out, _, err = l.localStore.AcquireSector(ctx, sid, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
+	out, _, err = l.localStore.AcquireSector(ctx, sid, ssize, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
 	if err == nil && (out.Sealed != "" && out.Cache != "") {
 		return out, nil, nil
 	}
@@ -448,11 +448,11 @@ func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi
 type LocalPoster struct {
 	localStore *stores.Local
 	ls         stores.LocalStorage
-	spt        abi.RegisteredSealProof
+	ssize      abi.SectorSize
 }
 
 func (l *LocalPoster) AcquireSector(ctx context.Context, sid abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, ptype stores.PathType) (stores.SectorPaths, func(), error) {
-	out, _, err := l.localStore.AcquireSector(ctx, sid, l.spt, existing, allocate, ptype, stores.AcquireMove)
+	out, _, err := l.localStore.AcquireSector(ctx, sid, l.ssize, existing, allocate, ptype, stores.AcquireMove)
 	if err != nil {
 		return out, nil, err
 	}
