@@ -192,7 +192,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		}
 		for _, url := range info.URLs {
 			remoteURL = url
-			if strings.Contains(url, ":6620") {
+			if strings.Contains(url, ":6610") {
 				best = true
 				break
 			}

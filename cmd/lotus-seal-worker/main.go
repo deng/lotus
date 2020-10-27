@@ -250,19 +250,19 @@ var runCmd = &cli.Command{
 
 		var taskTypes []sealtasks.TaskType
 
-		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize)
+		taskTypes = append(taskTypes, sealtasks.TTFetch)
 
 		if cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
 		}
 		if cctx.Bool("precommit1") {
-			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
+			taskTypes = append(taskTypes, sealtasks.TTCommit1, sealtasks.TTPreCommit1, sealtasks.TTFinalize)
 		}
 		if cctx.Bool("unseal") {
 			taskTypes = append(taskTypes, sealtasks.TTUnseal)
 		}
 		if cctx.Bool("precommit2") {
-			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
+			taskTypes = append(taskTypes, sealtasks.TTCommit1, sealtasks.TTPreCommit2, sealtasks.TTFinalize)
 		}
 		if cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
@@ -505,6 +505,7 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageS
 			"run",
 			fmt.Sprintf("--listen=%s", cctx.String("listen")),
 			fmt.Sprintf("--outer-listen=%s", cctx.String("outer-listen")),
+			fmt.Sprintf("--no-check-param=%t", cctx.Bool("no-check-param")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
 			fmt.Sprintf("--no-swap=%t", cctx.Bool("no-swap")),
 			fmt.Sprintf("--addpiece=%t", cctx.Bool("addpiece")),
