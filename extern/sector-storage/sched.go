@@ -355,7 +355,7 @@ func (sh *scheduler) trySched() {
 			for wnd, windowRequest := range sh.openWindows {
 				worker, ok := sh.workers[windowRequest.worker]
 				if !ok {
-					log.Errorf("worker referenced by windowRequest not found (worker: %d)", windowRequest.worker)
+					log.Debugf("worker referenced by windowRequest not found (worker: %d)", windowRequest.worker)
 					// TODO: How to move forward here?
 					continue
 				}
@@ -369,7 +369,7 @@ func (sh *scheduler) trySched() {
 				ok, err := task.sel.Ok(rpcCtx, task.taskType, sh.spt, worker)
 				cancel()
 				if err != nil {
-					log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
+					log.Debugf("trySched(1) req.sel.Ok error: %+v", err)
 					continue
 				}
 
@@ -522,13 +522,13 @@ func (sh *scheduler) runWorker(id WorkerID, w *workerHandle) {
 		taskDone := make(chan struct{}, 1)
 		windowsRequested := 0
 
-		//ctx, cancel := context.WithCancel(context.TODO())
-		//defer cancel()
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
 
-		//workerClosing, err := worker.w.Closing(ctx)
-		//if err != nil {
-		//	return
-		//}
+		workerClosing, err := worker.w.Closing(ctx)
+		if err != nil {
+			return
+		}
 
 		defer func() {
 			log.Warnw("Worker closing", "workerid", wid)
@@ -546,8 +546,8 @@ func (sh *scheduler) runWorker(id WorkerID, w *workerHandle) {
 				}:
 				case <-sh.closing:
 					return
-				//case <-workerClosing:
-				//	return
+				case <-workerClosing:
+					return
 				case <-worker.closingMgr:
 					return
 				}
@@ -562,8 +562,8 @@ func (sh *scheduler) runWorker(id WorkerID, w *workerHandle) {
 				log.Debugw("task done", "workerid", wid)
 			case <-sh.closing:
 				return
-			//case <-workerClosing:
-			//	return
+			case <-workerClosing:
+				return
 			case <-worker.closingMgr:
 				return
 			}
