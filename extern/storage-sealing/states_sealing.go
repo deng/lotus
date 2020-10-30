@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -343,15 +344,21 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
 	}
-
-	proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), c2in)
-	if err != nil {
-		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+	//for retry 3 time
+	var resErr error
+	for i := 0; i < 3; i++ {
+		proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), c2in)
+		if err != nil {
+			resErr = err
+			time.Sleep(time.Minute)
+			continue
+		}
+		return ctx.Send(SectorCommitted{
+			Proof: proof,
+		})
 	}
 
-	return ctx.Send(SectorCommitted{
-		Proof: proof,
-	})
+	return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", resErr)})
 }
 
 func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {

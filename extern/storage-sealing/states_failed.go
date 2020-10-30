@@ -55,7 +55,7 @@ func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector Se
 		return err
 	}
 
-	return ctx.Send(SectorRetrySealPreCommit1{})
+	return ctx.Send(SectorRemove{})
 }
 
 func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector SectorInfo) error {
