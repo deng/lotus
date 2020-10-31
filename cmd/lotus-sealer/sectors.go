@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"os"
 	"sort"
 	"strconv"
@@ -32,6 +33,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsAutoPledgeCmd,
 		sectorsRemoveCmd,
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
@@ -52,6 +54,64 @@ var sectorsPledgeCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		return nodeApi.PledgeSector(ctx)
+	},
+}
+
+var sectorsAutoPledgeCmd = &cli.Command{
+	Name:  "auto-pledge",
+	Usage: "auto n store random data in a sector",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "num",
+			Usage: "max p1 parallel num ",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		maxNum := cctx.Int("num")
+		if maxNum <= 0 {
+			return xerrors.Errorf("don't allow num less than 0")
+		}
+		sigChan := make(chan os.Signal, 2)
+		run := true
+		for run {
+			select {
+			case sig := <-sigChan:
+				log.Warnw("received shutdown", "signal", sig)
+				run = false
+				break
+			default:
+				if jobs, err := nodeApi.WorkerJobs(ctx); err == nil {
+					runCount := 0
+					for _, jobs := range jobs {
+						for _, job := range jobs {
+							if job.Task == sealtasks.TTAddPiece || job.Task == sealtasks.TTPreCommit1 {
+								runCount++
+							}
+						}
+					}
+					if maxNum > runCount {
+						count := maxNum - runCount
+						log.Infof("=== need %d, run %d, auto pledge sector %d ===", maxNum, runCount, count)
+						for i := 0; i < count; i++ {
+							nodeApi.PledgeSector(ctx)
+							time.Sleep(30 * time.Second)
+						}
+					}
+				} else {
+					log.Errorf("getting worker jobs: %w", err)
+				}
+				time.Sleep(2 * time.Minute)
+				break
+			}
+		}
+		log.Infof("== auto pledge end ==")
+		return nil
 	},
 }
 
