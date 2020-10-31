@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
+	"syscall"
 	"text/tabwriter"
 	"time"
 
@@ -78,6 +80,7 @@ var sectorsAutoPledgeCmd = &cli.Command{
 			return xerrors.Errorf("don't allow num less than 0")
 		}
 		sigChan := make(chan os.Signal, 2)
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 		run := true
 		for run {
 			select {
