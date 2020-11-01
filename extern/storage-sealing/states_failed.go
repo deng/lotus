@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"bytes"
+	"os"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -54,8 +55,10 @@ func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector Se
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
-
-	return ctx.Send(SectorRemove{})
+	if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+		return ctx.Send(SectorRemove{})
+	}
+	return ctx.Send(SectorRetrySealPreCommit1{})
 }
 
 func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector SectorInfo) error {
