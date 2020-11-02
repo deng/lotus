@@ -163,33 +163,10 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	m.unsealedInfoMap.lk.Lock()
-
-	sid, pads, err := m.getSectorAndPadding(size)
+	sid, offset, startPacking, err := m.calAddPieceToAnySectorParameters(ctx, size, r, &d)
 	if err != nil {
-		m.unsealedInfoMap.lk.Unlock()
-		return 0, 0, xerrors.Errorf("getting available sector: %w", err)
+		return 0, 0, err
 	}
-
-	for _, p := range pads {
-		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
-		if err != nil {
-			m.unsealedInfoMap.lk.Unlock()
-			return 0, 0, xerrors.Errorf("writing pads: %w", err)
-		}
-	}
-
-	offset := m.unsealedInfoMap.infos[sid].stored
-	err = m.addPiece(ctx, sid, size, r, &d)
-
-	if err != nil {
-		m.unsealedInfoMap.lk.Unlock()
-		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
-	}
-
-	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
-
-	m.unsealedInfoMap.lk.Unlock()
 
 	if startPacking {
 		if err := m.StartPacking(sid); err != nil {
@@ -198,6 +175,34 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	return sid, offset, nil
+}
+
+func (m *Sealing) calAddPieceToAnySectorParameters(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, bool, error) {
+	m.unsealedInfoMap.lk.Lock()
+	defer m.unsealedInfoMap.lk.Unlock()
+
+	sid, pads, err := m.getSectorAndPadding(size)
+	if err != nil {
+		return 0, 0, false, xerrors.Errorf("getting available sector: %w", err)
+	}
+
+	for _, p := range pads {
+		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
+		if err != nil {
+			return 0, 0, false, xerrors.Errorf("writing pads: %w", err)
+		}
+	}
+
+	offset := m.unsealedInfoMap.infos[sid].stored
+	err = m.addPiece(ctx, sid, size, r, di)
+
+	if err != nil {
+		return 0, 0, false, xerrors.Errorf("adding piece to sector: %w", err)
+	}
+
+	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
+
+	return sid, offset, startPacking, nil
 }
 
 // Caller should hold m.unsealedInfoMap.lk
