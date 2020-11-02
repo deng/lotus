@@ -55,9 +55,7 @@ func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector Se
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
-	if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
-		return ctx.Send(SectorRemove{})
-	}
+
 	return ctx.Send(SectorRetrySealPreCommit1{})
 }
 
@@ -150,6 +148,10 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 	}
 
 	if sector.InvalidProofs > 1 {
+		if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+			log.Errorf("%d consecutive compute fails", sector.SectorNumber)
+			return ctx.Send(SectorRemove{})
+		}
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive compute fails")})
 	}
 
@@ -169,10 +171,22 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrBadCommD:
+			if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+				log.Errorf("%d bad CommD error: %w", sector.SectorNumber, err)
+				return ctx.Send(SectorRemove{})
+			}
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
+			if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+				log.Errorf("%d ticket expired error: %w", sector.SectorNumber, err)
+				return ctx.Send(SectorRemove{})
+			}
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
+			if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+				log.Errorf("%d bad ticket: %w", sector.SectorNumber, err)
+				return ctx.Send(SectorRemove{})
+			}
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
@@ -204,6 +218,10 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			}
 
 			if sector.InvalidProofs > 0 {
+				if val, ok := os.LookupEnv("USE_LOTUS_SEALER"); ok && (val == "true" || val == "1") {
+					log.Errorf("%d consecutive invalid proofs", sector.SectorNumber)
+					return ctx.Send(SectorRemove{})
+				}
 				return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive invalid proofs")})
 			}
 
