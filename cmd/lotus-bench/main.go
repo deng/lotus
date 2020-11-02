@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -486,8 +487,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 		start := time.Now()
 		log.Infof("[%d] Writing piece into sector...", i)
 
-		r := rand.New(rand.NewSource(100 + int64(i)))
-
+		//r := rand.New(rand.NewSource(100 + int64(i)))
+		r := bytes.NewReader([]byte(nil))
 		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
 		if err != nil {
 			return nil, nil, err
