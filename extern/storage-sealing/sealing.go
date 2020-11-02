@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"math"
 	"sync"
 	"time"
 
@@ -301,49 +300,50 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 			return 0, ErrTooManySectorsSealing
 		}
 	}
+	/*
+		if cfg.MaxWaitDealsSectors > 0 {
+			// run in a loop because we have to drop the map lock here for a bit
+			tries := 0
 
-	if cfg.MaxWaitDealsSectors > 0 {
-		// run in a loop because we have to drop the map lock here for a bit
-		tries := 0
+			// we have to run in a loop as we're dropping unsealedInfoMap.lk
+			//  to actually call StartPacking. When we do that, another entry can
+			//  get added to unsealedInfoMap.
+			for uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
+				if tries > 10 {
+					// whatever...
+					break
+				}
 
-		// we have to run in a loop as we're dropping unsealedInfoMap.lk
-		//  to actually call StartPacking. When we do that, another entry can
-		//  get added to unsealedInfoMap.
-		for uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
-			if tries > 10 {
-				// whatever...
-				break
-			}
+				if tries > 0 {
+					m.unsealedInfoMap.lk.Unlock()
+					time.Sleep(time.Second)
+					m.unsealedInfoMap.lk.Lock()
+				}
 
-			if tries > 0 {
+				tries++
+				var mostStored abi.PaddedPieceSize = math.MaxUint64
+				var best abi.SectorNumber = math.MaxUint64
+
+				for sn, info := range m.unsealedInfoMap.infos {
+					if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
+						best = sn
+					}
+				}
+
+				if best == math.MaxUint64 {
+					// probably not possible, but who knows
+					break
+				}
+
 				m.unsealedInfoMap.lk.Unlock()
-				time.Sleep(time.Second)
+				if err := m.StartPacking(best); err != nil {
+					log.Error("newDealSector StartPacking error: %+v", err)
+					continue // let's pretend this is fine
+				}
 				m.unsealedInfoMap.lk.Lock()
 			}
-
-			tries++
-			var mostStored abi.PaddedPieceSize = math.MaxUint64
-			var best abi.SectorNumber = math.MaxUint64
-
-			for sn, info := range m.unsealedInfoMap.infos {
-				if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
-					best = sn
-				}
-			}
-
-			if best == math.MaxUint64 {
-				// probably not possible, but who knows
-				break
-			}
-
-			m.unsealedInfoMap.lk.Unlock()
-			if err := m.StartPacking(best); err != nil {
-				log.Error("newDealSector StartPacking error: %+v", err)
-				continue // let's pretend this is fine
-			}
-			m.unsealedInfoMap.lk.Lock()
 		}
-	}
+	*/
 
 	// Now actually create a new sector
 
