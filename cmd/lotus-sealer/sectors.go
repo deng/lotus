@@ -67,6 +67,16 @@ var sectorsAutoPledgeCmd = &cli.Command{
 			Name:  "num",
 			Usage: "max p1 parallel num ",
 		},
+		&cli.IntFlag{
+			Name:  "interval",
+			Usage: "interval time for scan ",
+			Value: 5,
+		},
+		&cli.IntFlag{
+			Name:  "stride",
+			Usage: "stride num ",
+			Value: 0,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
@@ -79,6 +89,8 @@ var sectorsAutoPledgeCmd = &cli.Command{
 		if maxNum <= 0 {
 			return xerrors.Errorf("don't allow num less than 0")
 		}
+		intervalTime := cctx.Int("interval")
+		stride := cctx.Int("stride")
 		sigChan := make(chan os.Signal, 2)
 		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 		run := true
@@ -100,6 +112,11 @@ var sectorsAutoPledgeCmd = &cli.Command{
 					}
 					if maxNum > runCount {
 						count := maxNum - runCount
+						if stride != 0 {
+							if count > stride {
+								count = stride
+							}
+						}
 						log.Infof("=== need %d, run %d, auto pledge sector %d ===", maxNum, runCount, count)
 						for i := 0; i < count; i++ {
 							nodeApi.PledgeSector(ctx)
@@ -109,7 +126,7 @@ var sectorsAutoPledgeCmd = &cli.Command{
 				} else {
 					log.Errorf("getting worker jobs: %w", err)
 				}
-				time.Sleep(2 * time.Minute)
+				time.Sleep(time.Duration(intervalTime) * time.Minute)
 				break
 			}
 		}
