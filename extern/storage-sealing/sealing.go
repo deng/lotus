@@ -96,8 +96,9 @@ type FeeConfig struct {
 }
 
 type UnsealedSectorMap struct {
-	infos map[abi.SectorNumber]UnsealedSectorInfo
-	lk    sync.Mutex
+	infos   map[abi.SectorNumber]UnsealedSectorInfo
+	lk      sync.Mutex
+	lkqueue sync.Mutex
 }
 
 type UnsealedSectorInfo struct {
@@ -177,30 +178,45 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 }
 
 func (m *Sealing) calAddPieceToAnySectorParameters(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, bool, error) {
-	m.unsealedInfoMap.lk.Lock()
-	defer m.unsealedInfoMap.lk.Unlock()
+	log.Infof("Locking calAddPieceToAnySectorParameters %d", size)
+	m.unsealedInfoMap.lkqueue.Lock()
 
 	sid, pads, err := m.getSectorAndPadding(size)
+
+	if _, foundInfo := m.unsealedInfoMap.infos[sid]; !foundInfo {
+		m.unsealedInfoMap.lkqueue.Unlock()
+		return 0, 0, false, xerrors.Errorf("fail adding piece to sector: %d, unsealedInfoMap info not found", sid)
+	}
+
 	if err != nil {
+		m.unsealedInfoMap.lkqueue.Unlock()
 		return 0, 0, false, xerrors.Errorf("getting available sector: %w", err)
 	}
 
 	for _, p := range pads {
 		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
 		if err != nil {
+			m.unsealedInfoMap.lkqueue.Unlock()
 			return 0, 0, false, xerrors.Errorf("writing pads: %w", err)
 		}
 	}
 
-	offset := m.unsealedInfoMap.infos[sid].stored
 	err = m.addPiece(ctx, sid, size, r, di)
 
 	if err != nil {
+		m.unsealedInfoMap.lkqueue.Unlock()
 		return 0, 0, false, xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
-
+	unsealedInfo, foundInfo := m.unsealedInfoMap.infos[sid]
+	if !foundInfo {
+		m.unsealedInfoMap.lkqueue.Unlock()
+		return 0, 0, false, xerrors.Errorf("fail adding piece to sector: %d, unsealedInfoMap info not found", sid)
+	}
+	offset := unsealedInfo.stored
+	startPacking := unsealedInfo.numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
+	m.unsealedInfoMap.lkqueue.Unlock()
+	log.Infof("Locking calAddPieceToAnySectorParameters %d done", size)
 	return sid, offset, startPacking, nil
 }
 
@@ -241,9 +257,11 @@ func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 
 // Caller should NOT hold m.unsealedInfoMap.lk
 func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
+	log.Infof("Locking for starting packing sector %d ", sectorID)
 	// locking here ensures that when the SectorStartPacking event is sent, the sector won't be picked up anywhere else
 	m.unsealedInfoMap.lk.Lock()
 	defer m.unsealedInfoMap.lk.Unlock()
+	defer log.Infof("Locking for starting packing sector %d done", sectorID)
 
 	// cannot send SectorStartPacking to sectors that have already been packed, otherwise it will cause the state machine to exit
 	if _, ok := m.unsealedInfoMap.infos[sectorID]; !ok {

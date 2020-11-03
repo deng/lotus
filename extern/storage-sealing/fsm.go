@@ -382,8 +382,6 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		return xerrors.Errorf("getting the sealing delay: %w", err)
 	}
 
-	m.unsealedInfoMap.lk.Lock()
-	defer m.unsealedInfoMap.lk.Unlock()
 	for _, sector := range trackedSectors {
 		if m.startSector != 0 && (uint64(sector.SectorNumber) < m.startSector || uint64(sector.SectorNumber) >= m.startSector+100000) {
 			continue
@@ -395,6 +393,8 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 
 		if sector.State == WaitDeals {
 
+			log.Infof("Locking for adding to unsealedInfoMap sector %d, spieces %d", sector.SectorNumber, len(sector.Pieces))
+			m.unsealedInfoMap.lk.Lock()
 			// put the sector in the unsealedInfoMap
 			if _, ok := m.unsealedInfoMap.infos[sector.SectorNumber]; ok {
 				// something's funky here, but probably safe to move on
@@ -411,6 +411,8 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 
 				m.unsealedInfoMap.infos[sector.SectorNumber] = ui
 			}
+			m.unsealedInfoMap.lk.Unlock()
+			log.Infof("Locking for adding to unsealedInfoMap sector %d done", sector.SectorNumber)
 
 			// start a fresh timer for the sector
 			if cfg.WaitDealsDelay > 0 {
