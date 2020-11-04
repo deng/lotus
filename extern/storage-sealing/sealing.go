@@ -97,9 +97,8 @@ type FeeConfig struct {
 }
 
 type UnsealedSectorMap struct {
-	infos   map[abi.SectorNumber]UnsealedSectorInfo
-	lk      sync.Mutex
-	lkqueue sync.Mutex
+	infos map[abi.SectorNumber]UnsealedSectorInfo
+	lk    sync.Mutex
 }
 
 type UnsealedSectorInfo struct {
@@ -180,24 +179,24 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 
 func (m *Sealing) calAddPieceToAnySectorParameters(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, bool, error) {
 	log.Infof("Locking calAddPieceToAnySectorParameters %d", size)
-	m.unsealedInfoMap.lkqueue.Lock()
+	m.unsealedInfoMap.lk.Lock()
 
 	sid, pads, err := m.getSectorAndPadding(size)
 
 	if _, foundInfo := m.unsealedInfoMap.infos[sid]; !foundInfo {
-		m.unsealedInfoMap.lkqueue.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, false, xerrors.Errorf("fail adding piece to sector: %d, unsealedInfoMap info not found", sid)
 	}
 
 	if err != nil {
-		m.unsealedInfoMap.lkqueue.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, false, xerrors.Errorf("getting available sector: %w", err)
 	}
 
 	for _, p := range pads {
 		err = m.addPiece(ctx, sid, p.Unpadded(), NewNullReader(p.Unpadded()), nil)
 		if err != nil {
-			m.unsealedInfoMap.lkqueue.Unlock()
+			m.unsealedInfoMap.lk.Unlock()
 			return 0, 0, false, xerrors.Errorf("writing pads: %w", err)
 		}
 	}
@@ -205,18 +204,18 @@ func (m *Sealing) calAddPieceToAnySectorParameters(ctx context.Context, size abi
 	err = m.addPiece(ctx, sid, size, r, di)
 
 	if err != nil {
-		m.unsealedInfoMap.lkqueue.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, false, xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
 	unsealedInfo, foundInfo := m.unsealedInfoMap.infos[sid]
 	if !foundInfo {
-		m.unsealedInfoMap.lkqueue.Unlock()
+		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, false, xerrors.Errorf("fail adding piece to sector: %d, unsealedInfoMap info not found", sid)
 	}
 	offset := unsealedInfo.stored
 	startPacking := unsealedInfo.numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
-	m.unsealedInfoMap.lkqueue.Unlock()
+	m.unsealedInfoMap.lk.Unlock()
 	log.Infof("Locking calAddPieceToAnySectorParameters %d done", size)
 	return sid, offset, startPacking, nil
 }
