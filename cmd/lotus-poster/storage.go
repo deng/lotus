@@ -2,14 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -22,6 +21,7 @@ var storageCmd = &cli.Command{
 	Usage: "manage sector storage",
 	Subcommands: []*cli.Command{
 		storageAttachCmd,
+		storageSethotcmd,
 	},
 }
 
@@ -99,7 +99,27 @@ var storageAttachCmd = &cli.Command{
 				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
 			}
 		}
-
 		return nodeApi.StorageAddLocal(ctx, p)
+	},
+}
+
+var storageSethotcmd = &cli.Command{
+	Name:  "set-hot",
+	Usage: "set local storage paths for hot",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "path",
+			Usage: "set storage for hot sector storage",
+			Value: "",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetPosterAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		return nodeApi.StorageSetHot(ctx, cctx.String("path"))
 	},
 }
