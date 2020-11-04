@@ -56,7 +56,9 @@ func flagForAPI(t repo.RepoType) string {
 	case repo.StorageDealer:
 		return "dealer-api-url"
 	case repo.StorageSealer:
-		return "sealer-api-rul"
+		return "sealer-api-url"
+	case repo.Poster:
+		return "poster-api-url"
 	case repo.Worker:
 		return "worker-api-url"
 	default:
@@ -74,6 +76,8 @@ func flagForRepo(t repo.RepoType) string {
 		return "dealer-repo"
 	case repo.StorageSealer:
 		return "sealer-repo"
+	case repo.Poster:
+		return "poster-repo"
 	case repo.Worker:
 		return "worker-repo"
 	default:
@@ -91,6 +95,8 @@ func envForRepo(t repo.RepoType) string {
 		return "DEALER_API_INFO"
 	case repo.StorageSealer:
 		return "SEALER_API_INFO"
+	case repo.Poster:
+		return "POSTER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	default:
@@ -109,6 +115,8 @@ func envForRepoDeprecation(t repo.RepoType) string {
 		return "DEALER_API_INFO"
 	case repo.StorageSealer:
 		return "SEALER_API_INFO"
+	case repo.Poster:
+		return "POSTER_API_INFO"
 	case repo.Worker:
 		return "WORKER_API_INFO"
 	default:
