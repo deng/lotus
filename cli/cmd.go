@@ -271,7 +271,7 @@ func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error)
 }
 
 func GetPosterAPI(ctx *cli.Context) (api.PosterAPI, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+	addr, headers, err := GetRawAPI(ctx, repo.Poster)
 	if err != nil {
 		return nil, nil, err
 	}
