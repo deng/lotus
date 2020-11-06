@@ -45,6 +45,7 @@ const (
 	StorageMiner
 	StorageSealer
 	StorageDealer
+	Poster
 	Worker
 	Wallet
 )

@@ -376,6 +376,8 @@ func (l *LocalFaultTracker) CheckProvable(ctx context.Context, pp abi.Registered
 	return bad, nil
 }
 
+var STORAGE_HOT_DIR string
+
 func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorSize, sid abi.SectorID) (stores.SectorPaths, func(), error) {
 	var (
 		out     stores.SectorPaths
@@ -392,7 +394,7 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorS
 		return stores.SectorPaths{}, nil, err
 	}
 
-	found := false
+	localPath := ""
 	var weight uint64 = 0
 	for _, path := range paths {
 		if !path.CanStore {
@@ -402,17 +404,22 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorS
 			continue
 		}
 		if weight < path.Weight {
-			found = true
 			weight = path.Weight
+			localPath = path.LocalPath
 			storeID = path.ID
-
-			stores.SetPathByType(&out, stores.FTSealed, filepath.Join(path.LocalPath, stores.FTSealed.String(), stores.SectorName(sid)))
-			stores.SetPathByType(&out, stores.FTCache, filepath.Join(path.LocalPath, stores.FTCache.String(), stores.SectorName(sid)))
+		}
+		if STORAGE_HOT_DIR != "" && path.LocalPath == STORAGE_HOT_DIR {
+			localPath = path.LocalPath
+			storeID = path.ID
+			break
 		}
 	}
-	if !found {
+	if localPath == "" {
 		return stores.SectorPaths{}, nil, xerrors.New(fmt.Sprintf("don't find any sector %d", sid))
 	}
+
+	stores.SetPathByType(&out, stores.FTSealed, filepath.Join(localPath, stores.FTSealed.String(), stores.SectorName(sid)))
+	stores.SetPathByType(&out, stores.FTCache, filepath.Join(localPath, stores.FTCache.String(), stores.SectorName(sid)))
 
 	return out, func() {
 		if err := l.index.StorageDeclareSector(ctx, storeID, sid, stores.FTCache, true); err != nil {
@@ -477,6 +484,16 @@ func (p *LocalPoster) StorageAddLocal(ctx context.Context, path string) error {
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
+
+	return nil
+}
+
+func (p *LocalPoster) StorageSetHot(ctx context.Context, path string) error {
+	if path == "" {
+		return fmt.Errorf("storage set hot paths , don't allow empty")
+	}
+
+	STORAGE_HOT_DIR = path
 
 	return nil
 }
