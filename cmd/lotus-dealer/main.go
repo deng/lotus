@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -20,7 +21,10 @@ import (
 var log = logging.Logger("main")
 
 const FlagDealerRepo = "dealer-repo"
+const FlagMinerRepo = "miner-repo"
 const FlagPostgresURL = "postgres-url"
+
+const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
 	build.RunningNodeType = build.NodeDealer
@@ -82,6 +86,13 @@ func main() {
 				EnvVars: []string{"POSTGRES_URL"},
 				Value:   "",
 				Usage:   "use PostgreSQL as the Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
+			},
+			&cli.StringFlag{
+				Name:    FlagMinerRepo,
+				Aliases: []string{FlagMinerRepoDeprecation},
+				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
+				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
 			&cli.StringFlag{
 				Name:    FlagDealerRepo,

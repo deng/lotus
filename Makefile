@@ -58,10 +58,10 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 debug: GOFLAGS+=-tags=debug
-debug: lotus lotus-miner lotus-worker lotus-seed
+debug: lotus lotus-miner lotus-worker lotus-seed lotus-dealer
 
 2k: GOFLAGS+=-tags=2k
-2k: lotus lotus-miner lotus-worker lotus-seed
+2k: lotus lotus-miner lotus-worker lotus-seed lotus-dealer
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
