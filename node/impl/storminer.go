@@ -9,19 +9,19 @@ import (
 	"strconv"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -57,6 +57,8 @@ type StorageMinerAPI struct {
 	*stores.Index
 	DataTransfer dtypes.ProviderDataTransfer
 	Host         host.Host
+
+	DS dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
@@ -307,8 +309,30 @@ func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid
 	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	ts, err := sm.Full.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tsk := ts.Key()
+	allDeals, err := sm.Full.StateMarketDeals(ctx, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []api.MarketDeal
+
+	for _, deal := range allDeals {
+		if deal.Proposal.Provider == sm.Miner.Address() {
+			out = append(out, deal)
+		}
+	}
+
+	return out, nil
+}
+
+func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
@@ -397,8 +421,8 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 	return channels, nil
 }
 
-func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) RetrievalDealsList(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState, error) {
@@ -496,99 +520,23 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 	return &ci, nil
 }
 
-var addPieceRetryWait = 5 * time.Minute
-var addPieceRetryTimeout = 6 * time.Hour
+func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error {
+	return backup(sm.DS, fpath)
+}
 
+// TODO: AddPieceOnDealComplete
 func (sm *StorageMinerAPI) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
-	p, offset, err := sm.SectorBlocks.AddPiece(ctx, size, r, d)
-	curTime := time.Now()
-	for time.Since(curTime) < addPieceRetryTimeout {
-		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
-			if err != nil {
-				log.Errorf("failed to addPiece for deal %d, err: %w", d.DealID, err)
-			}
-			break
-		}
-		select {
-		case <-time.After(addPieceRetryWait):
-			p, offset, err = sm.SectorBlocks.AddPiece(ctx, size, r, d)
-		case <-ctx.Done():
-			return nil, xerrors.New("context expired while waiting to retry AddPiece")
-		}
-	}
-
-	if err != nil {
-		return nil, xerrors.Errorf("AddPiece failed: %s", err)
-	}
-	log.Warnf("New Deal: deal %d", d.DealID)
-
-	return &storagemarket.PackingResult{
-		SectorNumber: p,
-		Offset:       offset,
-		Size:         size.Padded(),
-	}, nil
+	return nil, xerrors.Errorf("no implement yet")
 }
 
+// TODO: LocatePieceForDealWithinSector
 func (sm *StorageMinerAPI) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
-	refs, err := sm.SectorBlocks.GetRefs(dealID)
-	if err != nil {
-		return nil, err
-	}
-	if len(refs) == 0 {
-		return nil, xerrors.New("no sector information for deal ID")
-	}
-
-	// TODO: better strategy (e.g. look for already unsealed)
-	var best api.SealedRef
-	var bestSi sealing.SectorInfo
-	for _, r := range refs {
-		si, err := sm.SectorBlocks.Miner.GetSectorInfo(r.SectorID)
-		if err != nil {
-			return nil, xerrors.Errorf("getting sector info: %w", err)
-		}
-		if si.State == sealing.Proving {
-			best = r
-			bestSi = si
-			break
-		}
-	}
-	if bestSi.State == sealing.UndefinedSectorState {
-		return nil, xerrors.New("no sealed sector found")
-	}
-	return &api.LocatePieceResult{
-		SectorID: best.SectorID,
-		Offset:   best.Offset,
-		Length:   best.Size.Padded(),
-	}, nil
+	return nil, xerrors.Errorf("no implement yet")
 }
 
+// TODO: UnsealSector
 func (sm *StorageMinerAPI) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	si, err := sm.Miner.GetSectorInfo(sectorID)
-	if err != nil {
-		return nil, err
-	}
-
-	mid, err := address.IDFromAddress(sm.Miner.Address())
-	if err != nil {
-		return nil, err
-	}
-
-	sid := abi.SectorID{
-		Miner:  abi.ActorID(mid),
-		Number: sectorID,
-	}
-
-	r, w := io.Pipe()
-	go func() {
-		var commD cid.Cid
-		if si.CommD != nil {
-			commD = *si.CommD
-		}
-		err := sm.IStorageMgr.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
-		_ = w.CloseWithError(err)
-	}()
-
-	return r, nil
+	return nil, xerrors.Errorf("no implement yet")
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

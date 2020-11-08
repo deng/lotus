@@ -4,16 +4,19 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/support/mock"
-	atesting "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/ipfs/go-cid"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	mock2 "github.com/filecoin-project/specs-actors/v2/support/mock"
+	atesting2 "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 func TestSingleton(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -25,10 +28,89 @@ func TestSingleton(t *testing.T) {
 	rt.Verify()
 }
 
+func TestCallerValidationNone(t *testing.T) {
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: CallerValidationBranchNone})
+	rt.Verify()
+}
+
+func TestCallerValidationIs(t *testing.T) {
+	caller := atesting2.NewIDAddr(t, 100)
+	receiver := atesting2.NewIDAddr(t, 101)
+	builder := mock2.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	rt.SetCaller(caller, builtin2.AccountActorCodeID)
+	var a Actor
+
+	caddrs := []address.Address{atesting2.NewIDAddr(t, 101)}
+
+	rt.ExpectValidateCallerAddr(caddrs...)
+	// fixed in: https://github.com/filecoin-project/specs-actors/pull/1155
+	rt.ExpectAbort(exitcode.SysErrForbidden, func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{
+			Branch: CallerValidationBranchIsAddress,
+			Addrs:  caddrs,
+		})
+	})
+	rt.Verify()
+
+	rt.ExpectValidateCallerAddr(caller)
+	rt.Call(a.CallerValidation, &CallerValidationArgs{
+		Branch: CallerValidationBranchIsAddress,
+		Addrs:  []address.Address{caller},
+	})
+	rt.Verify()
+}
+
+func TestCallerValidationType(t *testing.T) {
+	caller := atesting2.NewIDAddr(t, 100)
+	receiver := atesting2.NewIDAddr(t, 101)
+	builder := mock2.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	rt.SetCaller(caller, builtin2.AccountActorCodeID)
+	var a Actor
+
+	rt.ExpectValidateCallerType(builtin2.CronActorCodeID)
+	rt.ExpectAbort(exitcode.SysErrForbidden, func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{
+			Branch: CallerValidationBranchIsType,
+			Types:  []cid.Cid{builtin2.CronActorCodeID},
+		})
+	})
+	rt.Verify()
+
+	rt.ExpectValidateCallerType(builtin2.AccountActorCodeID)
+	rt.Call(a.CallerValidation, &CallerValidationArgs{
+		Branch: CallerValidationBranchIsType,
+		Types:  []cid.Cid{builtin2.AccountActorCodeID},
+	})
+	rt.Verify()
+}
+
+func TestCallerValidationInvalidBranch(t *testing.T) {
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.ExpectAssertionFailure("invalid branch passed to CallerValidation", func() {
+		rt.Call(a.CallerValidation, &CallerValidationArgs{Branch: -1})
+	})
+	rt.Verify()
+}
+
 func TestDeleteActor(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	beneficiary := atesting.NewIDAddr(t, 101)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	beneficiary := atesting2.NewIDAddr(t, 101)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -40,8 +122,8 @@ func TestDeleteActor(t *testing.T) {
 }
 
 func TestMutateStateInTransaction(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -66,8 +148,8 @@ func TestMutateStateInTransaction(t *testing.T) {
 }
 
 func TestMutateStateAfterTransaction(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -93,8 +175,8 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 }
 
 func TestMutateStateReadonly(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -118,9 +200,23 @@ func TestMutateStateReadonly(t *testing.T) {
 	rt.Verify()
 }
 
+func TestMutateStateInvalidBranch(t *testing.T) {
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
+
+	rt := builder.Build(t)
+	var a Actor
+
+	rt.ExpectValidateCallerAny()
+	rt.ExpectAssertionFailure("unknown mutation type", func() {
+		rt.Call(a.MutateState, &MutateStateArgs{Branch: -1})
+	})
+	rt.Verify()
+}
+
 func TestAbortWith(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -137,8 +233,8 @@ func TestAbortWith(t *testing.T) {
 }
 
 func TestAbortWithUncontrolled(t *testing.T) {
-	receiver := atesting.NewIDAddr(t, 100)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	receiver := atesting2.NewIDAddr(t, 100)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
 	var a Actor
@@ -154,12 +250,12 @@ func TestAbortWithUncontrolled(t *testing.T) {
 }
 
 func TestInspectRuntime(t *testing.T) {
-	caller := atesting.NewIDAddr(t, 100)
-	receiver := atesting.NewIDAddr(t, 101)
-	builder := mock.NewBuilder(context.Background(), receiver)
+	caller := atesting2.NewIDAddr(t, 100)
+	receiver := atesting2.NewIDAddr(t, 101)
+	builder := mock2.NewBuilder(context.Background(), receiver)
 
 	rt := builder.Build(t)
-	rt.SetCaller(caller, builtin.AccountActorCodeID)
+	rt.SetCaller(caller, builtin2.AccountActorCodeID)
 	rt.StateCreate(&State{})
 	var a Actor
 

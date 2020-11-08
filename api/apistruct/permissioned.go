@@ -43,3 +43,9 @@ func PermissionedStorDealerAPI(a api.StorageDealer) api.StorageDealer {
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
 }
+
+func PermissionedWalletAPI(a api.WalletAPI) api.WalletAPI {
+	var out WalletStruct
+	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
+	return &out
+}
