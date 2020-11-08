@@ -22,7 +22,7 @@ type StorageDealer interface {
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
-	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
+	MarketListDeals(ctx context.Context) ([]MarketDeal, error)
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
@@ -34,7 +34,7 @@ type StorageDealer interface {
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
-	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
+	DealsList(ctx context.Context) ([]MarketDeal, error)
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)
 	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error
 	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)

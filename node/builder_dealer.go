@@ -49,8 +49,13 @@ func ConfigStorageDealer(c interface{}) Option {
 		ConfigCommon(&cfg.Common),
 
 		If(cfg.Dealmaking.Filter != "",
-			Override(new(dtypes.DealFilter), modules.BasicDealFilter(dealfilter.CliDealFilter(cfg.Dealmaking.Filter))),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
 		),
+
+		If(cfg.Dealmaking.RetrievalFilter != "",
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
+		),
+
 		//内置默认配置，不启用任何密封功能
 		Override(new(sectorstorage.SealerConfig), sectorstorage.SealerConfig{
 			ParallelFetchLimit: 1,

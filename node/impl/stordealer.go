@@ -88,8 +88,8 @@ func (sm *StorageDealerAPI) DealsImportData(ctx context.Context, deal cid.Cid, f
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }
 
-func (sm *StorageDealerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageDealerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageDealerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
@@ -183,8 +183,30 @@ func (sm *StorageDealerAPI) MarketListDataTransfers(ctx context.Context) ([]api.
 	return apiChannels, nil
 }
 
-func (sm *StorageDealerAPI) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageDealerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	ts, err := sm.Full.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tsk := ts.Key()
+	allDeals, err := sm.Full.StateMarketDeals(ctx, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []api.MarketDeal
+
+	for _, deal := range allDeals {
+		if deal.Proposal.Provider == sm.Dealer.ActorAddress() {
+			out = append(out, deal)
+		}
+	}
+
+	return out, nil
+}
+
+func (sm *StorageDealerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageDealerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
