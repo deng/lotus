@@ -112,7 +112,7 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error
 
 	// TODO: 下面这两个方法需要移动到单独的sealing接口中
-	AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error)
+	AddPieceOnDealComplete(ctx context.Context, dealerPath string, d sealing.DealInfo) (*storagemarket.PackingResult, error)
 
 	LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*LocatePieceResult, error)
 

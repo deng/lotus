@@ -6,6 +6,9 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
+	"path"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -96,8 +99,34 @@ func (n *ProviderNodeAdapterDealer) OnDealComplete(ctx context.Context, deal sto
 		},
 		KeepUnsealed: deal.FastRetrieval,
 	}
+	dealerPath := "/dealer-data"
+	filename := path.Join(dealerPath, strconv.FormatUint(uint64(deal.DealID), 10))
+	file, err := os.Create(filename)
+	if err != nil {
+		return nil, err
+	}
+	var bufferRead bytes.Buffer
+	tee := io.TeeReader(pieceData, &bufferRead)
+	buf := make([]byte, 1024)
+	for {
+		// read a chunk
+		n, err := tee.Read(buf)
+		if err != nil && err != io.EOF {
+			file.Close()
+			return nil, err
+		}
+		if n == 0 {
+			break
+		}
+		// write a chunk
+		if _, err := file.Write(buf[:n]); err != nil {
+			file.Close()
+			return nil, err
+		}
+	}
+	file.Close()
 
-	return n.sealingApi.AddPieceOnDealComplete(ctx, pieceSize, pieceData, sdInfo)
+	return n.sealingApi.AddPieceOnDealComplete(ctx, dealerPath, sdInfo)
 }
 
 func (n *ProviderNodeAdapterDealer) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
@@ -110,7 +139,8 @@ func (n *ProviderNodeAdapterDealer) VerifySignature(ctx context.Context, sig cry
 	return err == nil, err
 }
 
-func (n *ProviderNodeAdapterDealer) ListProviderDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
+/*
+func (n *ProviderNodeAdapterDealer) ListProviderDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]api.MarketDeal, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return nil, err
@@ -120,7 +150,7 @@ func (n *ProviderNodeAdapterDealer) ListProviderDeals(ctx context.Context, addr 
 		return nil, err
 	}
 
-	var out []storagemarket.StorageDeal
+	var out []api.MarketDeal
 
 	for _, deal := range allDeals {
 		sharedDeal := utils.FromOnChainDeal(deal.Proposal, deal.State)
@@ -131,6 +161,7 @@ func (n *ProviderNodeAdapterDealer) ListProviderDeals(ctx context.Context, addr 
 
 	return out, nil
 }
+*/
 
 func (n *ProviderNodeAdapterDealer) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)

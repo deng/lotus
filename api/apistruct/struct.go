@@ -340,11 +340,11 @@ type StorageMinerStruct struct {
 		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
-		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
-
-		AddPieceOnDealComplete         func(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error)            `perm:"admin"`
+		AddPieceOnDealComplete         func(ctx context.Context, dealerPath string, d sealing.DealInfo) (*storagemarket.PackingResult, error)                                  `perm:"admin"`
 		LocatePieceForDealWithinSector func(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error)                              `perm:"admin"`
 		UnsealSector                   func(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) `perm:"admin"`
+
+		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 	}
 }
 
@@ -1390,12 +1390,8 @@ func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid ci
 	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
 }
 
-func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {
-	return c.Internal.CreateBackup(ctx, fpath)
-}
-
-func (c *StorageMinerStruct) AddPieceOnDealComplete(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
-	return c.Internal.AddPieceOnDealComplete(ctx, size, r, d)
+func (c *StorageMinerStruct) AddPieceOnDealComplete(ctx context.Context, dealerPath string, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
+	return c.Internal.AddPieceOnDealComplete(ctx, dealerPath, d)
 }
 
 func (c *StorageMinerStruct) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
@@ -1404,6 +1400,10 @@ func (c *StorageMinerStruct) LocatePieceForDealWithinSector(ctx context.Context,
 
 func (c *StorageMinerStruct) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	return c.Internal.UnsealSector(ctx, sectorID, offset, length)
+}
+
+func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {
+	return c.Internal.CreateBackup(ctx, fpath)
 }
 
 // WorkerStruct
