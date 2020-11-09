@@ -1,21 +1,16 @@
-[submodule "extern/filecoin-ffi"]
-	path = extern/filecoin-ffi
-	url = https://github.com/filecoin-project/filecoin-ffi.git
-	branch = master
-	ignore = dirty
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
-	url = https://github.com/filecoin-project/serialization-vectors
-	ignore = dirty
+	url = https://github.com/filecoin-project/serialization-vectors.git
+    ignore = dirty
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
-	ignore = dirty
-[submodule "extern/fil-blst"]
-	path = extern/fil-blst
-	url = https://github.com/filecoin-project/fil-blst.git
-	ignore = dirty
+    ignore = dirty
 [submodule "extern/oni"]
 	path = extern/oni
-	url = https://github.com/filecoin-project/oni
-	ignore = dirty
+	url = https://github.com/filecoin-project/oni.git
+    ignore = dirty
+[submodule "extern/blst"]
+	path = extern/blst
+	url = https://github.com/supranational/blst.git
+    ignore = dirty
