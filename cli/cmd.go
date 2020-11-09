@@ -308,13 +308,38 @@ func GetStorageSealerAPI(ctx *cli.Context, opts ...GetStorageSealerOption) (api.
 	return client.NewStorageSealerRPC(ctx.Context, addr, headers)
 }
 
-func GetStorageDealerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageDealer, jsonrpc.ClientCloser, error) {
+func GetStorageDealerAPI(ctx *cli.Context, opts ...GetStorageSealerOption) (api.StorageDealer, jsonrpc.ClientCloser, error) {
+	var options GetStorageSealerOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageDealer), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.StorageDealer)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewStorageDealerRPC(ctx.Context, addr, headers, opts...)
+	if options.PreferHttp {
+		u, err := url.Parse(addr)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("parsing miner api URL: %w", err)
+		}
+
+		switch u.Scheme {
+		case "ws":
+			u.Scheme = "http"
+		case "wss":
+			u.Scheme = "https"
+		}
+
+		addr = u.String()
+	}
+
+	return client.NewStorageDealerRPC(ctx.Context, addr, headers)
 }
 
 func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error) {

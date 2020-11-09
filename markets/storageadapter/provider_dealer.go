@@ -47,6 +47,7 @@ type ProviderNodeAdapterDealer struct {
 	ev         *events.Events
 
 	publishSpec, addBalanceSpec *api.MessageSendSpec
+	dsMatcher                   *dealStateMatcher
 }
 
 func NewProviderNodeAdapterDealer(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, sealingApi api.Sealer, full api.FullNode) storagemarket.StorageProviderNode {
@@ -57,6 +58,7 @@ func NewProviderNodeAdapterDealer(fc *config.MinerFeeConfig) func(dag dtypes.Sta
 			dag:        dag,
 			sealingApi: sealingApi,
 			ev:         events.NewEvents(context.TODO(), full),
+			dsMatcher:  newDealStateMatcher(state.NewStatePredicates(full)),
 		}
 		if fc != nil {
 			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}
@@ -147,35 +149,6 @@ func (n *ProviderNodeAdapterDealer) OnDealComplete(ctx context.Context, deal sto
 	file.Close()
 
 	return n.sealingApi.AddPieceOnDealComplete(ctx, piecePath, sdInfo)
-	/*
-		p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-		curTime := time.Now()
-		for time.Since(curTime) < addPieceRetryTimeout {
-			if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
-				if err != nil {
-					log.Errorf("failed to addPiece for deal %d, err: %w", deal.DealID, err)
-				}
-				break
-			}
-			select {
-			case <-time.After(addPieceRetryWait):
-				p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-			case <-ctx.Done():
-				return nil, xerrors.New("context expired while waiting to retry AddPiece")
-			}
-		}
-
-		if err != nil {
-			return nil, xerrors.Errorf("AddPiece failed: %s", err)
-		}
-		log.Warnf("New Deal: deal %d", deal.DealID)
-
-		return &storagemarket.PackingResult{
-			SectorNumber: p,
-			Offset:       offset,
-			Size:         pieceSize.Padded(),
-		}, nil
-	*/
 }
 
 func (n *ProviderNodeAdapterDealer) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
@@ -255,34 +228,6 @@ func (n *ProviderNodeAdapterDealer) LocatePieceForDealWithinSector(ctx context.C
 		return 0, 0, 0, err
 	}
 	return lp.SectorID, lp.Offset, lp.Length, nil
-	/*
-		refs, err := n.secb.GetRefs(dealID)
-		if err != nil {
-			return 0, 0, 0, err
-		}
-		if len(refs) == 0 {
-			return 0, 0, 0, xerrors.New("no sector information for deal ID")
-		}
-
-		// TODO: better strategy (e.g. look for already unsealed)
-		var best api.SealedRef
-		var bestSi sealing.SectorInfo
-		for _, r := range refs {
-			si, err := n.secb.Miner.GetSectorInfo(r.SectorID)
-			if err != nil {
-				return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
-			}
-			if si.State == sealing.Proving {
-				best = r
-				bestSi = si
-				break
-			}
-		}
-		if bestSi.State == sealing.UndefinedSectorState {
-			return 0, 0, 0, xerrors.New("no sealed sector found")
-		}
-		return best.SectorID, best.Offset, best.Size.Padded(), nil
-	*/
 }
 
 func (n *ProviderNodeAdapterDealer) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
@@ -348,44 +293,44 @@ func (n *ProviderNodeAdapterDealer) OnDealSectorCommitted(ctx context.Context, p
 	var sectorNumber abi.SectorNumber
 	var sectorFound bool
 
-	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
+	matchEvent := func(msg *types.Message) (matched bool, err error) {
 		if msg.To != provider {
-			return true, false, nil
+			return false, nil
 		}
 
 		switch msg.Method {
 		case miner.Methods.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
 			}
 
 			for _, did := range params.DealIDs {
 				if did == dealID {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
-					return true, false, nil
+					return false, nil
 				}
 			}
 
-			return true, false, nil
+			return false, nil
 		case miner.Methods.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
 
 			if !sectorFound {
-				return true, false, nil
+				return false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {
-				return true, false, nil
+				return false, nil
 			}
 
-			return false, true, nil
+			return true, nil
 		default:
-			return true, false, nil
+			return false, nil
 		}
 
 	}
@@ -502,13 +447,7 @@ func (n *ProviderNodeAdapterDealer) OnDealExpiredOrSlashed(ctx context.Context, 
 	}
 
 	// Watch for state changes to the deal
-	preds := state.NewStatePredicates(n)
-	dealDiff := preds.OnStorageMarketActorChanged(
-		preds.OnDealStateChanged(
-			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
-	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs.Key(), newTs.Key())
-	}
+	match := n.dsMatcher.matcher(ctx, dealID)
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1

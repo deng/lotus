@@ -77,7 +77,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
-		sealingApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		sealingApi, scloser, err := lcli.GetStorageMinerAPI(cctx, lcli.StorageMinerUseHttp)
 		if err != nil {
 			return err
 		}

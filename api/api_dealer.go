@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,6 +27,10 @@ type StorageDealer interface {
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)
 	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
+	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]MarketDeal, error)
