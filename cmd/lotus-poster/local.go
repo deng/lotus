@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"os"
@@ -235,16 +236,13 @@ var localCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		worker, err := nodeApi.StateAccountKey(ctx, minerInfo.Worker, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
+
 		j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 		if err != nil {
 			return fmt.Errorf("failed to open filesystem journal: %w", err)
 		}
 
-		sched, err := storage.NewWindowedPoStScheduler(nodeApi, config.MinerFeeConfig{}, provider, NewLocalFaultTracker(localStore, index), j, maddr, worker)
+		sched, err := storage.NewWindowedPoStScheduler(nodeApi, config.MinerFeeConfig{}, provider, NewLocalFaultTracker(localStore, index), j, maddr)
 		if err != nil {
 			return err
 		}
@@ -314,7 +312,7 @@ func (l *LocalFaultTracker) CheckProvable(ctx context.Context, pp abi.Registered
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			locked, err := l.index.StorageTryLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTNone)
+			locked, err := l.index.StorageTryLock(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.FTNone)
 			if err != nil {
 				return xerrors.Errorf("acquiring sector lock: %w", err)
 			}
@@ -378,20 +376,20 @@ func (l *LocalFaultTracker) CheckProvable(ctx context.Context, pp abi.Registered
 
 var STORAGE_HOT_DIR string
 
-func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorSize, sid abi.SectorID) (stores.SectorPaths, func(), error) {
+func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorSize, sid abi.SectorID) (storiface.SectorPaths, func(), error) {
 	var (
-		out     stores.SectorPaths
+		out     storiface.SectorPaths
 		err     error
 		storeID stores.ID
 	)
-	out, _, err = l.localStore.AcquireSector(ctx, sid, ssize, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
+	out, _, err = l.localStore.AcquireSector(ctx, sid, ssize, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err == nil && (out.Sealed != "" && out.Cache != "") {
 		return out, nil, nil
 	}
 
 	paths, err := l.localStore.Local(ctx)
 	if err != nil {
-		return stores.SectorPaths{}, nil, err
+		return storiface.SectorPaths{}, nil, err
 	}
 
 	localPath := ""
@@ -415,17 +413,17 @@ func (l *LocalFaultTracker) AcquireSector(ctx context.Context, ssize abi.SectorS
 		}
 	}
 	if localPath == "" {
-		return stores.SectorPaths{}, nil, xerrors.New(fmt.Sprintf("don't find any sector %d", sid))
+		return storiface.SectorPaths{}, nil, xerrors.New(fmt.Sprintf("don't find any sector %d", sid))
 	}
 
-	stores.SetPathByType(&out, stores.FTSealed, filepath.Join(localPath, stores.FTSealed.String(), stores.SectorName(sid)))
-	stores.SetPathByType(&out, stores.FTCache, filepath.Join(localPath, stores.FTCache.String(), stores.SectorName(sid)))
+	storiface.SetPathByType(&out, storiface.FTSealed, filepath.Join(localPath, storiface.FTSealed.String(), storiface.SectorName(sid)))
+	storiface.SetPathByType(&out, storiface.FTCache, filepath.Join(localPath, storiface.FTCache.String(), storiface.SectorName(sid)))
 
 	return out, func() {
-		if err := l.index.StorageDeclareSector(ctx, storeID, sid, stores.FTCache, true); err != nil {
+		if err := l.index.StorageDeclareSector(ctx, storeID, sid, storiface.FTCache, true); err != nil {
 			log.Errorf("declare sector cache error: %+v", err)
 		}
-		if err := l.index.StorageDeclareSector(ctx, storeID, sid, stores.FTSealed, true); err != nil {
+		if err := l.index.StorageDeclareSector(ctx, storeID, sid, storiface.FTSealed, true); err != nil {
 			log.Errorf("declare sector sealed error: %+v", err)
 		}
 	}, nil
@@ -458,8 +456,8 @@ type LocalPoster struct {
 	ssize      abi.SectorSize
 }
 
-func (l *LocalPoster) AcquireSector(ctx context.Context, sid abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, ptype stores.PathType) (stores.SectorPaths, func(), error) {
-	out, _, err := l.localStore.AcquireSector(ctx, sid, l.ssize, existing, allocate, ptype, stores.AcquireMove)
+func (l *LocalPoster) AcquireSector(ctx context.Context, sid abi.SectorID, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	out, _, err := l.localStore.AcquireSector(ctx, sid, l.ssize, existing, allocate, ptype, storiface.AcquireMove)
 	if err != nil {
 		return out, nil, err
 	}

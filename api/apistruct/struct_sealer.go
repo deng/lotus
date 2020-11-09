@@ -15,6 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 )
 
@@ -39,24 +41,36 @@ type StorageSealerStruct struct {
 		SectorRemove                  func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
 		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
-		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
-		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
-		WorkerJobs    func(context.Context) (map[uint64][]storiface.WorkerJob, error) `perm:"admin"`
+		WorkerConnect func(context.Context, string) error                                `perm:"admin"` // TODO: worker perm
+		WorkerStats   func(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
+		WorkerJobs    func(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
 
-		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
+		ReturnAddPiece        func(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error          `perm:"admin" retry:"true"`
+		ReturnSealPreCommit1  func(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error `perm:"admin" retry:"true"`
+		ReturnSealPreCommit2  func(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error `perm:"admin" retry:"true"`
+		ReturnSealCommit1     func(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error    `perm:"admin" retry:"true"`
+		ReturnSealCommit2     func(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error       `perm:"admin" retry:"true"`
+		ReturnFinalizeSector  func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnReleaseUnsealed func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnMoveStorage     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnUnsealPiece     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
+		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
-		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                             `perm:"admin"`
-		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                    `perm:"admin"`
-		StorageStat          func(context.Context, stores.ID) (fsutil.FsStat, error)                                                                                `perm:"admin"`
-		StorageAttach        func(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                         `perm:"admin"`
-		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType, bool) error                                                      `perm:"admin"`
-		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, stores.SectorFileType) error                                                            `perm:"admin"`
-		StorageFindSector    func(context.Context, abi.SectorID, stores.SectorFileType, abi.SectorSize, bool) ([]stores.SectorStorageInfo, error)                   `perm:"admin"`
-		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                                           `perm:"admin"`
-		StorageBestAlloc     func(ctx context.Context, allocate stores.SectorFileType, ssize abi.SectorSize, sealing stores.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
-		StorageReportHealth  func(ctx context.Context, id stores.ID, report stores.HealthReport) error                                                              `perm:"admin"`
-		StorageLock          func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error                          `perm:"admin"`
-		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error)                  `perm:"admin"`
+		SealingSchedDiag func(context.Context, bool) (interface{}, error) `perm:"admin"`
+
+		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
+		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`
+		StorageStat          func(context.Context, stores.ID) (fsutil.FsStat, error)                                                                                      `perm:"admin"`
+		StorageAttach        func(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                               `perm:"admin"`
+		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, storiface.SectorFileType, bool) error                                                         `perm:"admin"`
+		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, storiface.SectorFileType) error                                                               `perm:"admin"`
+		StorageFindSector    func(context.Context, abi.SectorID, storiface.SectorFileType, abi.SectorSize, bool) ([]stores.SectorStorageInfo, error)                      `perm:"admin"`
+		StorageInfo          func(context.Context, stores.ID) (stores.StorageInfo, error)                                                                                 `perm:"admin"`
+		StorageBestAlloc     func(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, sealing storiface.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
+		StorageReportHealth  func(ctx context.Context, id stores.ID, report stores.HealthReport) error                                                                    `perm:"admin"`
+		StorageLock          func(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                          `perm:"admin"`
+		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                  `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 
@@ -133,31 +147,75 @@ func (c *StorageSealerStruct) WorkerConnect(ctx context.Context, url string) err
 	return c.Internal.WorkerConnect(ctx, url)
 }
 
-func (c *StorageSealerStruct) WorkerStats(ctx context.Context) (map[uint64]storiface.WorkerStats, error) {
+func (c *StorageSealerStruct) WorkerStats(ctx context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
 	return c.Internal.WorkerStats(ctx)
 }
 
-func (c *StorageSealerStruct) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
+func (c *StorageSealerStruct) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {
 	return c.Internal.WorkerJobs(ctx)
 }
 
-func (c *StorageSealerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
-	return c.Internal.SealingSchedDiag(ctx)
+func (c *StorageSealerStruct) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error {
+	return c.Internal.ReturnAddPiece(ctx, callID, pi, err)
+}
+
+func (c *StorageSealerStruct) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error {
+	return c.Internal.ReturnSealPreCommit1(ctx, callID, p1o, err)
+}
+
+func (c *StorageSealerStruct) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error {
+	return c.Internal.ReturnSealPreCommit2(ctx, callID, sealed, err)
+}
+
+func (c *StorageSealerStruct) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error {
+	return c.Internal.ReturnSealCommit1(ctx, callID, out, err)
+}
+
+func (c *StorageSealerStruct) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error {
+	return c.Internal.ReturnSealCommit2(ctx, callID, proof, err)
+}
+
+func (c *StorageSealerStruct) ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnFinalizeSector(ctx, callID, err)
+}
+
+func (c *StorageSealerStruct) ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnReleaseUnsealed(ctx, callID, err)
+}
+
+func (c *StorageSealerStruct) ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnMoveStorage(ctx, callID, err)
+}
+
+func (c *StorageSealerStruct) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnUnsealPiece(ctx, callID, err)
+}
+
+func (c *StorageSealerStruct) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err string) error {
+	return c.Internal.ReturnReadPiece(ctx, callID, ok, err)
+}
+
+func (c *StorageSealerStruct) ReturnFetch(ctx context.Context, callID storiface.CallID, err string) error {
+	return c.Internal.ReturnFetch(ctx, callID, err)
+}
+
+func (c *StorageSealerStruct) SealingSchedDiag(ctx context.Context, b bool) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx, b)
 }
 
 func (c *StorageSealerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
 	return c.Internal.StorageAttach(ctx, si, st)
 }
 
-func (c *StorageSealerStruct) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft stores.SectorFileType, primary bool) error {
+func (c *StorageSealerStruct) StorageDeclareSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
 	return c.Internal.StorageDeclareSector(ctx, storageId, s, ft, primary)
 }
 
-func (c *StorageSealerStruct) StorageDropSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft stores.SectorFileType) error {
+func (c *StorageSealerStruct) StorageDropSector(ctx context.Context, storageId stores.ID, s abi.SectorID, ft storiface.SectorFileType) error {
 	return c.Internal.StorageDropSector(ctx, storageId, s, ft)
 }
 
-func (c *StorageSealerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types stores.SectorFileType, spt abi.SectorSize, allowFetch bool) ([]stores.SectorStorageInfo, error) {
+func (c *StorageSealerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types storiface.SectorFileType, spt abi.SectorSize, allowFetch bool) ([]stores.SectorStorageInfo, error) {
 	return c.Internal.StorageFindSector(ctx, si, types, spt, allowFetch)
 }
 
@@ -177,7 +235,7 @@ func (c *StorageSealerStruct) StorageInfo(ctx context.Context, id stores.ID) (st
 	return c.Internal.StorageInfo(ctx, id)
 }
 
-func (c *StorageSealerStruct) StorageBestAlloc(ctx context.Context, allocate stores.SectorFileType, spt abi.SectorSize, pt stores.PathType) ([]stores.StorageInfo, error) {
+func (c *StorageSealerStruct) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, spt abi.SectorSize, pt storiface.PathType) ([]stores.StorageInfo, error) {
 	return c.Internal.StorageBestAlloc(ctx, allocate, spt, pt)
 }
 
@@ -185,11 +243,11 @@ func (c *StorageSealerStruct) StorageReportHealth(ctx context.Context, id stores
 	return c.Internal.StorageReportHealth(ctx, id, report)
 }
 
-func (c *StorageSealerStruct) StorageLock(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) error {
+func (c *StorageSealerStruct) StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error {
 	return c.Internal.StorageLock(ctx, sector, read, write)
 }
 
-func (c *StorageSealerStruct) StorageTryLock(ctx context.Context, sector abi.SectorID, read stores.SectorFileType, write stores.SectorFileType) (bool, error) {
+func (c *StorageSealerStruct) StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error) {
 	return c.Internal.StorageTryLock(ctx, sector, read, write)
 }
 

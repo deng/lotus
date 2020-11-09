@@ -2,10 +2,8 @@ package modules
 
 import (
 	"encoding/binary"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/ipfs/go-datastore"
 	"go.uber.org/fx"
@@ -28,7 +26,6 @@ func StorageSealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 		var (
 			ds     = params.MetadataDS
 			fds    = params.MetadataFDS
-			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
@@ -44,17 +41,6 @@ func StorageSealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 			return nil, err
 		}
 
-		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
-		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
 		var start uint64 = 0
 		if _, ok := os.LookupEnv("POSTGRES_URL"); ok {
 			start, err = minerStartSectorFromDS(fds)
@@ -62,7 +48,7 @@ func StorageSealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 				return nil, err
 			}
 		}
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j, start)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, start)
 		if err != nil {
 			return nil, err
 		}

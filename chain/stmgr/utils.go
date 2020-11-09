@@ -366,6 +366,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
@@ -389,6 +390,16 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	return root, trace, nil
+}
+
+func LookbackStateGetterForTipset(sm *StateManager, ts *types.TipSet) vm.LookbackStateGetter {
+	return func(ctx context.Context, round abi.ChainEpoch) (*state.StateTree, error) {
+		_, st, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
+		if err != nil {
+			return nil, err
+		}
+		return sm.StateTree(st)
+	}
 }
 
 func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, cid.Cid, error) {
@@ -601,6 +612,14 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act.Code)
 	}
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
+func GetParamType(actCode cid.Cid, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	m, found := MethodsMap[actCode][method]
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, actCode)
+	}
+	return reflect.New(m.Params.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
 func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {

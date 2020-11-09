@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
@@ -40,16 +41,16 @@ var addPieceRetryTimeout = 6 * time.Hour
 
 type StorageSealerAPI struct {
 	common.CommonAPI
-
-	ProofsConfig *ffiwrapper.Config
-	SectorBlocks *sectorblocks.SectorBlocks
+	*sectorstorage.Manager `optional:"true"`
+	ProofsConfig           *ffiwrapper.Config
+	SectorBlocks           *sectorblocks.SectorBlocks
 
 	PieceStore dtypes.ProviderPieceStore
 
 	Miner *storage.Miner
 
-	Full        api.FullNode
-	StorageMgr  *sectorstorage.Manager `optional:"true"`
+	Full api.FullNode
+
 	IStorageMgr sectorstorage.SectorManager
 	*stores.Index
 	Host host.Host
@@ -67,15 +68,15 @@ func (sm *StorageSealerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	sm.StorageMgr.ServeHTTP(w, r)
+	sm.Manager.ServeHTTP(w, r)
 }
 
-func (sm *StorageSealerAPI) WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error) {
-	return sm.StorageMgr.WorkerStats(), nil
+func (sm *StorageSealerAPI) WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
+	return sm.Manager.WorkerStats(), nil
 }
 
-func (sm *StorageSealerAPI) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
-	return sm.StorageMgr.WorkerJobs(), nil
+func (sm *StorageSealerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {
+	return sm.Manager.WorkerJobs(), nil
 }
 
 func (sm *StorageSealerAPI) ActorAddress(context.Context) (address.Address, error) {
@@ -194,7 +195,7 @@ func (sm *StorageSealerAPI) SectorsList(context.Context) ([]abi.SectorNumber, er
 }
 
 func (sm *StorageSealerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
-	return sm.StorageMgr.StorageLocal(ctx)
+	return sm.Manager.StorageLocal(ctx)
 }
 
 func (sm *StorageSealerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
@@ -214,7 +215,7 @@ func (sm *StorageSealerAPI) SectorsRefs(context.Context) (map[string][]api.Seale
 }
 
 func (sm *StorageSealerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
-	return sm.StorageMgr.FsStat(ctx, id)
+	return sm.Manager.FsStat(ctx, id)
 }
 
 func (sm *StorageSealerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
@@ -268,19 +269,19 @@ func (sm *StorageSealerAPI) WorkerConnect(ctx context.Context, url string) error
 
 	log.Infof("Connected to a remote worker at %s", url)
 
-	return sm.StorageMgr.AddWorker(ctx, w, url)
+	return sm.Manager.AddWorker(ctx, w)
 }
 
-func (sm *StorageSealerAPI) SealingSchedDiag(ctx context.Context) (interface{}, error) {
-	return sm.StorageMgr.SchedDiag(ctx)
+func (sm *StorageSealerAPI) SealingSchedDiag(ctx context.Context, b bool) (interface{}, error) {
+	return sm.Manager.SchedDiag(ctx, b)
 }
 
 func (sm *StorageSealerAPI) StorageAddLocal(ctx context.Context, path string) error {
-	if sm.StorageMgr == nil {
+	if sm.Manager == nil {
 		return xerrors.Errorf("no storage manager")
 	}
 
-	return sm.StorageMgr.AddLocalStorage(ctx, path)
+	return sm.Manager.AddLocalStorage(ctx, path)
 }
 
 func (sm *StorageSealerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {

@@ -257,4 +257,4 @@ func (sm *StorageDealerAPI) CreateBackup(ctx context.Context, fpath string) erro
 	return backup(sm.DS, fpath)
 }
 
-var _ api.StorageDealer = &StorageDealerAPI{}
+//var _ api.StorageDealer = &StorageDealerAPI{}
