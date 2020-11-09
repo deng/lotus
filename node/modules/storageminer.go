@@ -146,7 +146,7 @@ func (s *sidsc) Next() (abi.SectorNumber, error) {
 	return abi.SectorNumber(i), err
 }
 
-func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
+func SectorIDCounter(ds dtypes.MetadataFDS) sealing.SectorIDCounter {
 	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
 	return &sidsc{sc}
 }
@@ -159,6 +159,7 @@ type StorageMinerParams struct {
 	API                lapi.FullNode
 	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
+	MetadataFDS        dtypes.MetadataFDS
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
@@ -170,6 +171,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	return func(params StorageMinerParams) (*storage.Miner, error) {
 		var (
 			ds     = params.MetadataDS
+			fds    = params.MetadataFDS
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
 			api    = params.API
@@ -187,17 +189,6 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 		}
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
-		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
 		var start uint64 = 0
 		if _, ok := os.LookupEnv("POSTGRES_URL"); ok {
 			start, err = minerStartSectorFromDS(fds)
@@ -206,13 +197,13 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			}
 		}
 
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j, start)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, start)
 		if err != nil {
 			return nil, err
 		}
 
 		if val, ok := os.LookupEnv("LOTUS_MINER_DISABLE_WDPOST"); ok && (val == "true" || val == "1") {
-			fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr, worker)
+			fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr)
 			if err != nil {
 				return nil, err
 			}

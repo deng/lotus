@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"time"
 )
@@ -52,12 +53,13 @@ type Sealer interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
-	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error)
+	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)
 
 	// SealingSchedDiag dumps internal sealing scheduler state
-	SealingSchedDiag(context.Context) (interface{}, error)
+	SealingSchedDiag(context.Context, bool) (interface{}, error)
 
+	storiface.WorkerReturn
 	stores.SectorIndex
 
 	StorageAddLocal(ctx context.Context, path string) error

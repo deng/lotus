@@ -1,9 +1,7 @@
 package modules
 
 import (
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/storage"
 	"go.uber.org/fx"
 	"os"
@@ -14,7 +12,6 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 		var (
 			ds     = params.MetadataDS
 			fds    = params.MetadataFDS
-			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
@@ -30,14 +27,6 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 			return nil, err
 		}
 
-		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
-		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -48,7 +37,7 @@ func StorageDealer(fc config.MinerFeeConfig) func(params StorageMinerParams) (*s
 				return nil, err
 			}
 		}
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j, start)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, start)
 		if err != nil {
 			return nil, err
 		}

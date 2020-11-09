@@ -188,7 +188,7 @@ var runCmd = &cli.Command{
 
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
-
+		var rt repo.RepoType
 		var nodeApi api.StorageSealer
 		var closer func()
 		var err error

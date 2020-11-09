@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"math/rand"
 	"sort"
 	"sync"
@@ -93,6 +94,8 @@ type workerHandle struct {
 	cleanupStarted bool
 	closedMgr      chan struct{}
 	closingMgr     chan struct{}
+	supported      map[sealtasks.TaskType]struct{}
+	paths          []stores.StoragePath
 }
 
 type schedWindowRequest struct {
@@ -150,8 +153,8 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		workers: map[WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
-		windowRequests: make(chan *schedWindowRequest, 20),
-		workerChange:   make(chan struct{}, 20),
+		windowRequests: make(chan *schedWindowRequest, 10000),
+		workerChange:   make(chan struct{}, 10000),
 		workerDisable:  make(chan workerDisableReq),
 
 		schedQueue: &requestQueue{},
@@ -384,7 +387,7 @@ func (sh *scheduler) trySched() {
 			for wnd, windowRequest := range sh.openWindows {
 				worker, ok := sh.workers[windowRequest.worker]
 				if !ok {
-					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.worker)
+					log.Debugf("worker referenced by windowRequest not found (worker: %s)", windowRequest.worker)
 					// TODO: How to move forward here?
 					continue
 				}

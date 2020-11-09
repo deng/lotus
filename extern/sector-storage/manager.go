@@ -595,12 +595,12 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safe
 	fetchSel := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed, storiface.PathStorage)
 	moveUnsealed := unsealed
 	{
-		if len(keepUnsealed) == 0 {
+		if len(safeToFree) == 0 {
 			moveUnsealed = storiface.FTNone
 		}
 	}
 
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
+	err := m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTSealed|moveUnsealed, storiface.PathStorage, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			_, err := m.waitSimpleCall(ctx)(w.MoveStorage(ctx, sector, storiface.FTCache|storiface.FTSealed|moveUnsealed))

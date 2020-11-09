@@ -8,9 +8,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"os"
@@ -474,6 +476,9 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 					return err
 				}
 
+				wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
+				smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
+
 				smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
 					SealProofType: spt,
 				}, sectorstorage.SealerConfig{
@@ -483,7 +488,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 					AllowPreCommit2:    true,
 					AllowCommit:        true,
 					AllowUnseal:        true,
-				}, nil, sa)
+				}, nil, sa, wsts, smsts)
 				if err != nil {
 					return err
 				}

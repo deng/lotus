@@ -1,6 +1,9 @@
 package sectorstorage
 
 import (
+	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,4 +80,28 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	}
 
 	return out
+}
+
+func (whnd *workerHandle) getTaskTypes(ctx context.Context) (map[sealtasks.TaskType]struct{}, error) {
+	if whnd.supported == nil || len(whnd.supported) == 0 {
+		log.Infof("=====TaskTypes===> %s", whnd.info.Url)
+		tasks, err := whnd.workerRpc.TaskTypes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		whnd.supported = tasks
+	}
+	return whnd.supported, nil
+}
+
+func (whnd *workerHandle) getPaths(ctx context.Context) ([]stores.StoragePath, error) {
+	if whnd.paths == nil || len(whnd.paths) == 0 {
+		log.Infof("=====Paths===> %s", whnd.info.Url)
+		p, err := whnd.workerRpc.Paths(ctx)
+		if err != nil {
+			return nil, err
+		}
+		whnd.paths = p
+	}
+	return whnd.paths, nil
 }
