@@ -1,132 +1,118 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-	"math/rand"
-	"os"
-	"time"
 )
 
-var wdpostCmd = &cli.Command{
-	Name:  "wdpost",
-	Usage: "Benchmark a wdpost computation",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "storage-dir",
-			Value: "~/.lotus-bench",
-			Usage: "storage.json Path to the storage directory that will store sectors long term",
-		},
-		&cli.StringFlag{
-			Name:  "sector-size",
-			Value: "512MiB",
-			Usage: "size of the sectors in bytes, i.e. 32GiB",
-		},
-		&cli.BoolFlag{
-			Name:  "no-gpu",
-			Usage: "disable gpu usage for the benchmark run",
-		},
-		&cli.Uint64Flag{
-			Name:  "deadline-num",
-			Value: 0,
-		},
-		&cli.StringFlag{
-			Name:  "miner-addr",
-			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
-			Value: "t01000",
-		},
-	},
-	Action: func(c *cli.Context) error {
-		if c.Bool("no-gpu") {
-			err := os.Setenv("BELLMAN_NO_GPU", "1")
-			if err != nil {
-				return xerrors.Errorf("setting no-gpu flag: %w", err)
-			}
-		}
-		// sector size
-		sectorSizeInt, err := units.RAMInBytes(c.String("sector-size"))
-		if err != nil {
-			return err
-		}
-		sectorSize := abi.SectorSize(sectorSizeInt)
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
-		if err != nil {
-			return err
-		}
-		// 获取时空证明
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
-			return xerrors.Errorf("getting params: %w", err)
-		}
-		// miner address
-		maddr, err := address.NewFromString(c.String("miner-addr"))
-		if err != nil {
-			return err
-		}
-		amid, err := address.IDFromAddress(maddr)
-		if err != nil {
-			return err
-		}
-		mid := abi.ActorID(amid)
-		//创建时空证明提供者
-		cfg := &ffiwrapper.Config{
-			SealProofType: spt,
-		}
-		sbfs := &basicfs.Provider{
-			Root: c.String("storage-dir"),
-		}
-		sb, err := ffiwrapper.New(sbfs, cfg)
-		if err != nil {
-			return err
-		}
-
-		sinfos, err := sectorsForProof(c, maddr)
-		//sinfos, err := getProves(c)
-		if len(sinfos) == 0 {
-			// nothing to prove..
-			return xerrors.Errorf(" nothing to prove..")
-		}
-
-		var challenge [32]byte
-		rand.Read(challenge[:])
-		start := time.Now()
-		log.Info("computing window PoSt start sectors ", len(sinfos))
-		wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sinfos, challenge[:])
-		if err != nil {
-			return err
-		}
-
-		wpvi1 := saproof.WindowPoStVerifyInfo{
-			Randomness:        challenge[:],
-			Proofs:            wproof1,
-			ChallengedSectors: sinfos,
-			Prover:            mid,
-		}
-		ok, err := ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			log.Error("post verification failed")
-		}
-
-		elapsed := time.Since(start)
-
-		log.Infow("computing window PoSt", "elapsed", elapsed)
-		return nil
-	},
-}
+//var wdpostCmd = &cli.Command{
+//	Name:  "wdpost",
+//	Usage: "Benchmark a wdpost computation",
+//	Flags: []cli.Flag{
+//		&cli.StringFlag{
+//			Name:  "storage-dir",
+//			Value: "~/.lotus-bench",
+//			Usage: "storage.json Path to the storage directory that will store sectors long term",
+//		},
+//		&cli.StringFlag{
+//			Name:  "sector-size",
+//			Value: "512MiB",
+//			Usage: "size of the sectors in bytes, i.e. 32GiB",
+//		},
+//		&cli.BoolFlag{
+//			Name:  "no-gpu",
+//			Usage: "disable gpu usage for the benchmark run",
+//		},
+//		&cli.Uint64Flag{
+//			Name:  "deadline-num",
+//			Value: 0,
+//		},
+//		&cli.StringFlag{
+//			Name:  "miner-addr",
+//			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+//			Value: "t01000",
+//		},
+//	},
+//	Action: func(c *cli.Context) error {
+//		if c.Bool("no-gpu") {
+//			err := os.Setenv("BELLMAN_NO_GPU", "1")
+//			if err != nil {
+//				return xerrors.Errorf("setting no-gpu flag: %w", err)
+//			}
+//		}
+//		// sector size
+//		sectorSizeInt, err := units.RAMInBytes(c.String("sector-size"))
+//		if err != nil {
+//			return err
+//		}
+//		sectorSize := abi.SectorSize(sectorSizeInt)
+//		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+//		if err != nil {
+//			return err
+//		}
+//		// 获取时空证明
+//		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
+//			return xerrors.Errorf("getting params: %w", err)
+//		}
+//		// miner address
+//		maddr, err := address.NewFromString(c.String("miner-addr"))
+//		if err != nil {
+//			return err
+//		}
+//		amid, err := address.IDFromAddress(maddr)
+//		if err != nil {
+//			return err
+//		}
+//		mid := abi.ActorID(amid)
+//		//创建时空证明提供者
+//		cfg := &ffiwrapper.Config{
+//			SealProofType: spt,
+//		}
+//		sbfs := &basicfs.Provider{
+//			Root: c.String("storage-dir"),
+//		}
+//		sb, err := ffiwrapper.New(sbfs, cfg)
+//		if err != nil {
+//			return err
+//		}
+//
+//		sinfos, err := sectorsForProof(c, maddr)
+//		//sinfos, err := getProves(c)
+//		if len(sinfos) == 0 {
+//			// nothing to prove..
+//			return xerrors.Errorf(" nothing to prove..")
+//		}
+//
+//		var challenge [32]byte
+//		rand.Read(challenge[:])
+//		start := time.Now()
+//		log.Info("computing window PoSt start sectors ", len(sinfos))
+//		wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sinfos, challenge[:])
+//		if err != nil {
+//			return err
+//		}
+//
+//		wpvi1 := saproof.WindowPoStVerifyInfo{
+//			Randomness:        challenge[:],
+//			Proofs:            wproof1,
+//			ChallengedSectors: sinfos,
+//			Prover:            mid,
+//		}
+//		ok, err := ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
+//		if err != nil {
+//			return err
+//		}
+//		if !ok {
+//			log.Error("post verification failed")
+//		}
+//
+//		elapsed := time.Since(start)
+//
+//		log.Infow("computing window PoSt", "elapsed", elapsed)
+//		return nil
+//	},
+//}
 
 func sectorsForProof(c *cli.Context, actor address.Address) ([]saproof.SectorInfo, error) {
 	//获取待认证的扇区
@@ -185,40 +171,40 @@ func sectorsForProof(c *cli.Context, actor address.Address) ([]saproof.SectorInf
 	return proofSectors, nil
 }
 
-func getProves(c *cli.Context) ([]saproof.SectorInfo, error) {
-	minerApi, closer, err := lcli.GetStorageMinerAPI(c,
-		jsonrpc.WithNoReconnect(),
-		jsonrpc.WithTimeout(30*time.Second))
-	if err != nil {
-		return nil, err
-	}
-	defer closer()
-	ctx := lcli.ReqContext(c)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	sectors, err := minerApi.SectorsList(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]saproof.SectorInfo, 0)
-
-	for _, sc := range sectors {
-		st, err := minerApi.SectorsStatus(ctx, sc, false)
-		if err != nil {
-			return nil, err
-		}
-		if st.State == "Proving" {
-			res = append(res, saproof.SectorInfo{
-				SectorNumber: st.SectorID,
-				SealedCID:    *st.CommR,
-				SealProof:    st.SealProof,
-			})
-		}
-	}
-	if len(res) == 0 {
-		return nil, fmt.Errorf("don't have proving section")
-	}
-
-	return res, nil
-}
+//func getProves(c *cli.Context) ([]saproof.SectorInfo, error) {
+//	minerApi, closer, err := lcli.GetStorageMinerAPI(c,
+//		jsonrpc.WithNoReconnect(),
+//		jsonrpc.WithTimeout(30*time.Second))
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer closer()
+//	ctx := lcli.ReqContext(c)
+//	ctx, cancel := context.WithCancel(ctx)
+//	defer cancel()
+//
+//	sectors, err := minerApi.SectorsList(ctx)
+//	if err != nil {
+//		return nil, err
+//	}
+//	res := make([]saproof.SectorInfo, 0)
+//
+//	for _, sc := range sectors {
+//		st, err := minerApi.SectorsStatus(ctx, sc, false)
+//		if err != nil {
+//			return nil, err
+//		}
+//		if st.State == "Proving" {
+//			res = append(res, saproof.SectorInfo{
+//				SectorNumber: st.SectorID,
+//				SealedCID:    *st.CommR,
+//				SealProof:    st.SealProof,
+//			})
+//		}
+//	}
+//	if len(res) == 0 {
+//		return nil, fmt.Errorf("don't have proving section")
+//	}
+//
+//	return res, nil
+//}
