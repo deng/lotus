@@ -2,28 +2,39 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"os"
-	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
 type StorageDealerAPI struct {
-	StorageSealerAPI
+	common.CommonAPI
 
 	StorageProvider   storagemarket.StorageProvider
 	RetrievalProvider retrievalmarket.RetrievalProvider
 	DataTransfer      dtypes.ProviderDataTransfer
 
+	Full api.FullNode
+
+	Sealer api.Sealer
+
 	DS dtypes.MetadataDS
+
+	StorageMgr *sectorstorage.Manager `optional:"true"`
 
 	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
@@ -35,6 +46,16 @@ type StorageDealerAPI struct {
 	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
 	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
 	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
+}
+
+func (sm *StorageDealerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
+	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+		w.WriteHeader(401)
+		_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+		return
+	}
+
+	sm.StorageMgr.ServeHTTP(w, r)
 }
 
 func (sm *StorageDealerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
@@ -60,8 +81,13 @@ func (sm *StorageDealerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, er
 
 	var out []api.MarketDeal
 
+	actorAddress, err := sm.Sealer.ActorAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, deal := range allDeals {
-		if deal.Proposal.Provider == sm.Miner.Address() {
+		if deal.Proposal.Provider == actorAddress {
 			out = append(out, deal)
 		}
 	}
@@ -199,6 +225,7 @@ func (sm *StorageDealerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Co
 	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
 }
 
+/*
 func (sm *StorageDealerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {
 	return sm.GetExpectedSealDurationFunc()
 }
@@ -206,6 +233,7 @@ func (sm *StorageDealerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context
 func (sm *StorageDealerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context, d time.Duration) error {
 	return sm.SetExpectedSealDurationFunc(d)
 }
+*/
 
 func (sm *StorageDealerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
 	fi, err := os.Open(fname)

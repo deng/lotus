@@ -13,7 +13,6 @@ import (
 
 type StorageDealer interface {
 	Common
-	Sealer
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]MarketDeal, error)

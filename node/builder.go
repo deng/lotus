@@ -417,51 +417,54 @@ func Online() Option {
 			Override(new(dtypes.MinerAddress), modules.MinerAddress),
 			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
-			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
-			Override(new(*sectorstorage.Manager), modules.SectorStorage),
-			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+			//Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
+			//默认会启动一个调度器，现在调整为空对象
+			//Override(new(*sectorstorage.Manager), modules.DealerSectorStorage),
+			//Override(new(*sectorstorage.Manager), nil),
+			//Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 
-			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
-			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
-			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageDealer().Fees)),
+			//Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
+			//Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+			//Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+			//Override(new(*storage.Miner), modules.StorageDealer(config.DefaultStorageDealer().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
-			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
-			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
-			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
-			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+			//Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
+			//Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
+			//Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
+			//Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
 
 			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
-			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
+			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProviderDealer),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
-			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapterDealer(nil)),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 
-			Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.NewConsiderOnlineStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.NewSetConsideringOnlineStorageDealsFunc),
-			Override(new(dtypes.ConsiderOnlineRetrievalDealsConfigFunc), modules.NewConsiderOnlineRetrievalDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOnlineRetrievalDealsConfigFunc), modules.NewSetConsiderOnlineRetrievalDealsConfigFunc),
-			Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.NewStorageDealPieceCidBlocklistConfigFunc),
-			Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.NewSetStorageDealPieceCidBlocklistConfigFunc),
-			Override(new(dtypes.ConsiderOfflineStorageDealsConfigFunc), modules.NewConsiderOfflineStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOfflineStorageDealsConfigFunc), modules.NewSetConsideringOfflineStorageDealsFunc),
-			Override(new(dtypes.ConsiderOfflineRetrievalDealsConfigFunc), modules.NewConsiderOfflineRetrievalDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.NewSetConsiderOfflineRetrievalDealsConfigFunc),
-			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
-			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
-			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
-			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+			Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.DealerNewConsiderOnlineStorageDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.DealerNewSetConsideringOnlineStorageDealsFunc),
+			Override(new(dtypes.ConsiderOnlineRetrievalDealsConfigFunc), modules.DealerNewConsiderOnlineRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOnlineRetrievalDealsConfigFunc), modules.DealerNewSetConsiderOnlineRetrievalDealsConfigFunc),
+			Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.DealerNewStorageDealPieceCidBlocklistConfigFunc),
+			Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.DealerNewSetStorageDealPieceCidBlocklistConfigFunc),
+			Override(new(dtypes.ConsiderOfflineStorageDealsConfigFunc), modules.DealerNewConsiderOfflineStorageDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOfflineStorageDealsConfigFunc), modules.DealerNewSetConsideringOfflineStorageDealsFunc),
+			Override(new(dtypes.ConsiderOfflineRetrievalDealsConfigFunc), modules.DealerNewConsiderOfflineRetrievalDealsConfigFunc),
+			Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.DealerNewSetConsiderOfflineRetrievalDealsConfigFunc),
+
+			Override(new(dtypes.SetSealingConfigFunc), modules.DealerNewSetSealConfigFunc),
+			Override(new(dtypes.GetSealingConfigFunc), modules.DealerNewGetSealConfigFunc),
+			Override(new(dtypes.SetExpectedSealDurationFunc), modules.DealerNewSetExpectedSealDurationFunc),
+			Override(new(dtypes.GetExpectedSealDurationFunc), modules.DealerNewGetExpectedSealDurationFunc),
 		),
 	)
 }
@@ -643,7 +646,7 @@ func ConfigStorageSealer(c interface{}) Option {
 }
 
 func ConfigStorageDealer(c interface{}) Option {
-	cfg, ok := c.(*config.StorageMiner)
+	cfg, ok := c.(*config.StorageDealer)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
@@ -659,10 +662,10 @@ func ConfigStorageDealer(c interface{}) Option {
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
-		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
+		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapterDealer(&cfg.Fees)),
 
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
-		Override(new(*storage.Miner), modules.StorageDealer(cfg.Fees)),
+		Override(new(sectorstorage.SealerConfig), sectorstorage.SealerConfig{}),
+		Override(new(*storage.Dealer), modules.StorageDealer(cfg.Fees)),
 	)
 }
 

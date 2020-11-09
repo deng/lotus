@@ -178,6 +178,11 @@ var setAskCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
+		sealingAPI, scloser, err := lcli.GetStorageSealerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer scloser()
 
 		api, closer, err := lcli.GetStorageDealerAPI(cctx)
 		if err != nil {
@@ -209,12 +214,12 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
-		maddr, err := api.ActorAddress(ctx)
+		maddr, err := sealingAPI.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
 
-		ssize, err := api.ActorSectorSize(ctx, maddr)
+		ssize, err := sealingAPI.ActorSectorSize(ctx, maddr)
 		if err != nil {
 			return err
 		}
@@ -536,7 +541,7 @@ var setSealDurationCmd = &cli.Command{
 	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
 	ArgsUsage: "<minutes>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}

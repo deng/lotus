@@ -57,11 +57,11 @@ var actorSetAddrsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeAPI, closer, err := lcli.GetStorageDealerAPI(cctx)
+		sealingAPI, scloser, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer scloser()
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -88,7 +88,7 @@ var actorSetAddrsCmd = &cli.Command{
 			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := sealingAPI.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ var actorSetPeeridCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeAPI, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeAPI, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ var actorWithdrawCmd = &cli.Command{
 	Usage:     "withdraw available balance",
 	ArgsUsage: "[amount (FIL)]",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ var actorRepayDebtCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -383,7 +383,7 @@ var actorControlList = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
 
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -487,7 +487,7 @@ var actorControlSet = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -609,7 +609,7 @@ var actorSetOwnerCmd = &cli.Command{
 			return fmt.Errorf("must pass address of new owner address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}

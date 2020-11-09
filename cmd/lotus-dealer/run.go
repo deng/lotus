@@ -37,7 +37,7 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus dealer process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "api",
+			Name:  "dealer-api",
 			Usage: "2346",
 		},
 		&cli.BoolFlag{
@@ -77,6 +77,11 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
+		sealingApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer scloser()
 		ctx := lcli.DaemonContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
@@ -133,9 +138,9 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("dealer-api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("dealer-api"))
 				})),
 			node.ApplyIf(func(s *node.Settings) bool { return db != nil },
 				node.Override(new(dtypes.MetadataDS), func() (dtypes.MetadataDS, error) {
@@ -145,6 +150,7 @@ var runCmd = &cli.Command{
 					return repo.NewDBKeyStore(db, cctx.String("actor"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(api.Sealer), sealingApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)

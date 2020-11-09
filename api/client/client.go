@@ -2,8 +2,9 @@ package client
 
 import (
 	"context"
-	"github.com/filecoin-project/go-jsonrpc"
 	"net/http"
+
+	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -82,7 +83,6 @@ func NewStorageDealerRPC(ctx context.Context, addr string, requestHeader http.He
 	var res apistruct.StorageDealerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
-			&res.StorageSealerStruct.Internal,
 			&res.CommonStruct.Internal,
 			&res.Internal,
 		},

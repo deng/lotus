@@ -22,6 +22,10 @@ var log = logging.Logger("main")
 
 const FlagDealerRepo = "dealer-repo"
 const FlagPostgresURL = "postgres-url"
+const FlagMinerRepo = "miner-repo"
+const FlagSealerRepo = "sealer-repo"
+
+const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
 	build.RunningNodeType = build.NodeMiner
@@ -90,6 +94,13 @@ func main() {
 				EnvVars: []string{"POSTGRES_URL"},
 				Value:   "",
 				Usage:   "use PostgreSQL as the Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
+			},
+			&cli.StringFlag{
+				Name:    FlagMinerRepo,
+				Aliases: []string{FlagMinerRepoDeprecation, FlagSealerRepo},
+				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_SEALER_PATH"},
+				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
+				Usage:   fmt.Sprintf("Specify miner/sealer repo path"),
 			},
 			&cli.StringFlag{
 				Name:    FlagDealerRepo,

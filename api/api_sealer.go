@@ -2,14 +2,19 @@ package api
 
 import (
 	"context"
+	"io"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 // StorageSealer is a low-level interface to the Filecoin network storage miner node
@@ -66,6 +71,16 @@ type Sealer interface {
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)
 	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)
+
+	AddPieceOnDealComplete(ctx context.Context, dealerPath string, d sealing.DealInfo) (*storagemarket.PackingResult, error)
+	LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*LocatePieceResult, error)
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error)
+}
+
+type LocatePieceResult struct {
+	SectorID abi.SectorNumber
+	Offset   abi.PaddedPieceSize
+	Length   abi.PaddedPieceSize
 }
 
 type StorageSealer interface {

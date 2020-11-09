@@ -3,9 +3,18 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
@@ -24,9 +33,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var addPieceRetryWait = 5 * time.Minute
@@ -300,6 +306,109 @@ func (sm *StorageSealerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid
 	}
 
 	return &ci, nil
+}
+
+func (sm *StorageSealerAPI) AddPieceOnDealComplete(ctx context.Context, dealerPath string, d sealing.DealInfo) (*storagemarket.PackingResult, error) {
+	tempDir := filestore.OsPath(dealerPath)
+	store, err := filestore.NewLocalFileStore(tempDir)
+	if err != nil {
+		return nil, xerrors.Errorf("AddPieceOnDealComplete failed: %s", err)
+	}
+	tmpPath := filestore.Path(strconv.FormatUint(uint64(d.DealID), 10))
+	file, err := store.Open(tmpPath)
+	if err != nil {
+		return nil, xerrors.Errorf("AddPieceOnDealComplete failed: %s", err)
+	}
+	r, size := padreader.New(file, uint64(file.Size()))
+	p, offset, err := sm.SectorBlocks.AddPiece(ctx, size, r, d)
+	curTime := time.Now()
+	for time.Since(curTime) < addPieceRetryTimeout {
+		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+			if err != nil {
+				log.Errorf("failed to addPiece for deal %d, err: %w", d.DealID, err)
+			}
+			break
+		}
+		select {
+		case <-time.After(addPieceRetryWait):
+			p, offset, err = sm.SectorBlocks.AddPiece(ctx, size, r, d)
+		case <-ctx.Done():
+			return nil, xerrors.New("context expired while waiting to retry AddPiece")
+		}
+	}
+
+	if err != nil {
+		return nil, xerrors.Errorf("AddPieceOnDealComplete failed: %s", err)
+	}
+	log.Warnf("New Deal: deal %d", d.DealID)
+
+	return &storagemarket.PackingResult{
+		SectorNumber: p,
+		Offset:       offset,
+		Size:         size.Padded(),
+	}, nil
+}
+
+func (sm *StorageSealerAPI) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (*api.LocatePieceResult, error) {
+	refs, err := sm.SectorBlocks.GetRefs(dealID)
+	if err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return nil, xerrors.New("no sector information for deal ID")
+	}
+
+	// TODO: better strategy (e.g. look for already unsealed)
+	var best api.SealedRef
+	var bestSi sealing.SectorInfo
+	for _, r := range refs {
+		si, err := sm.SectorBlocks.Miner.GetSectorInfo(r.SectorID)
+		if err != nil {
+			return nil, xerrors.Errorf("getting sector info: %w", err)
+		}
+		if si.State == sealing.Proving {
+			best = r
+			bestSi = si
+			break
+		}
+	}
+	if bestSi.State == sealing.UndefinedSectorState {
+		return nil, xerrors.New("no sealed sector found")
+	}
+	return &api.LocatePieceResult{
+		SectorID: best.SectorID,
+		Offset:   best.Offset,
+		Length:   best.Size.Padded(),
+	}, nil
+}
+
+func (sm *StorageSealerAPI) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	si, err := sm.Miner.GetSectorInfo(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	mid, err := address.IDFromAddress(sm.Miner.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	sid := abi.SectorID{
+		Miner:  abi.ActorID(mid),
+		Number: sectorID,
+	}
+
+	r, w := io.Pipe()
+	go func() {
+		var commD cid.Cid
+		if si.CommD != nil {
+			commD = *si.CommD
+		}
+		err := sm.IStorageMgr.ReadPiece(ctx, w, sid, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
+		_ = w.CloseWithError(err)
+	}()
+
+	return r, nil
 }
 
 var _ api.StorageSealer = &StorageSealerAPI{}

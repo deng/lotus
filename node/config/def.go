@@ -195,52 +195,6 @@ func DefaultStorageMiner() *StorageMiner {
 	return cfg
 }
 
-func DefaultStorageDealer() *StorageMiner {
-	cfg := &StorageMiner{
-		Common: defCommon(),
-
-		Sealing: SealingConfig{
-			MaxWaitDealsSectors:       2, // 64G with 32G sectors
-			MaxSealingSectors:         0,
-			MaxSealingSectorsForDeals: 0,
-			WaitDealsDelay:            Duration(time.Hour * 6),
-		},
-
-		Storage: sectorstorage.SealerConfig{
-			AllowAddPiece:   true,
-			AllowPreCommit1: true,
-			AllowPreCommit2: true,
-			AllowCommit:     true,
-			AllowUnseal:     true,
-
-			// Default to 10 - tcp should still be able to figure this out, and
-			// it's the ratio between 10gbit / 1gbit
-			ParallelFetchLimit: 10,
-		},
-
-		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:    true,
-			ConsiderOfflineStorageDeals:   true,
-			ConsiderOnlineRetrievalDeals:  true,
-			ConsiderOfflineRetrievalDeals: true,
-			PieceCidBlocklist:             []cid.Cid{},
-			// TODO: It'd be nice to set this based on sector size
-			ExpectedSealDuration: Duration(time.Hour * 24),
-		},
-
-		Fees: MinerFeeConfig{
-			MaxPreCommitGasFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))), // 0.05
-			MaxCommitGasFee:        types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))),
-			MaxWindowPoStGasFee:    types.FIL(types.FromFil(50)),
-			MaxPublishDealsFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(33))),  // 0.03ish
-			MaxMarketBalanceAddFee: types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(100))), // 0.01
-		},
-	}
-	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2346/http"
-	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2346"
-	return cfg
-}
-
 var _ encoding.TextMarshaler = (*Duration)(nil)
 var _ encoding.TextUnmarshaler = (*Duration)(nil)
 

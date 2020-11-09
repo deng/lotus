@@ -61,7 +61,7 @@ var storageAttachCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ var storageListCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
 
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -263,7 +263,7 @@ var storageFindCmd = &cli.Command{
 	Usage:     "find sector in the storage system",
 	ArgsUsage: "[sector number]",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
 		if err != nil {
 			return err
 		}
