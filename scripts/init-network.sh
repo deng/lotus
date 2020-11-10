@@ -107,7 +107,7 @@ rm -rf $mdt0222
 rm -rf $mdt0333
 
 env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner init --genesis-miner --actor=t01000 --pre-sealed-sectors="${sdt0111}" --pre-sealed-metadata="${sdt0111}/pre-seal-t01000.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner run --nosync &
+env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" PIECE_POSTGRES_URL=postgres://postgres:123456@192.168.68.44:5432/dealer?sslmode=disable ./lotus-miner run --nosync &
 mpid=$!
 
 env LOTUS_PATH="${ldt0222}" LOTUS_MINER_PATH="${mdt0222}" ./lotus-miner init                 --actor=t01001 --pre-sealed-sectors="${sdt0222}" --pre-sealed-metadata="${sdt0222}/pre-seal-t01001.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true

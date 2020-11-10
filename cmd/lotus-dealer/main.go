@@ -24,6 +24,7 @@ const FlagDealerRepo = "dealer-repo"
 const FlagPostgresURL = "postgres-url"
 const FlagMinerRepo = "miner-repo"
 const FlagSealerRepo = "sealer-repo"
+const FlagPiecePostgresURL = "piece-postgres-url"
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
@@ -94,6 +95,12 @@ func main() {
 				EnvVars: []string{"POSTGRES_URL"},
 				Value:   "",
 				Usage:   "use PostgreSQL as the Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
+			},
+			&cli.StringFlag{
+				Name:    FlagPiecePostgresURL,
+				EnvVars: []string{"PIECE_POSTGRES_URL"},
+				Value:   "",
+				Usage:   "use PostgreSQL as the Piece Datastore, eg: postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable",
 			},
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,

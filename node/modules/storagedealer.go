@@ -1,15 +1,18 @@
 package modules
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	lapi "github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -253,4 +256,20 @@ func DealerNewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpected
 		})
 		return
 	}, nil
+}
+
+// NewProviderPieceStore creates a statestore for storing metadata about pieces
+// shared by the storage and retrieval providers
+func NewProviderPieceStoreDealer(lc fx.Lifecycle, ds dtypes.PiecedataDS) (dtypes.ProviderPieceStore, error) {
+	ps, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+	if err != nil {
+		return nil, err
+	}
+	ps.OnReady(marketevents.ReadyLogger("piecestore"))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return ps.Start(ctx)
+		},
+	})
+	return ps, nil
 }

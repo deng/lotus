@@ -351,7 +351,7 @@ func Online() Option {
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStoreDealer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
@@ -400,7 +400,7 @@ func Online() Option {
 			Override(new(*storage.Miner), modules.StorageSealer(config.DefaultStorageMiner().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
-			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStoreDealer),
 			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
 			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
 			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
@@ -429,7 +429,7 @@ func Online() Option {
 			//Override(new(*storage.Miner), modules.StorageDealer(config.DefaultStorageDealer().Fees)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
-			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStoreDealer),
 			//Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
 			//Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
 			//Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
@@ -684,6 +684,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 			Override(new(dtypes.MetadataFDS), modules.Datastore),
 			Override(new(dtypes.MetadataDS), modules.Datastore),
+			Override(new(dtypes.PiecedataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),

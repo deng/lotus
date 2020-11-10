@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	sqlds "github.com/ipfs/go-ds-sql"
 	pg "github.com/ipfs/go-ds-sql/postgres"
 
@@ -49,6 +50,21 @@ func DataBase(mydb *sql.DB, miner string) (dtypes.MetadataDS, error) {
 		return nil, err
 	}
 	_, err = mydb.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS metadata_key_text_pattern_ops_idx ON %s (key text_pattern_ops)", table))
+	if err != nil {
+		return nil, err
+	}
+	return sqlds.NewDatastore(mydb, pg.NewQueries(table)), nil
+}
+
+func PieceDataBase(mydb *sql.DB, miner string) (dtypes.PiecedataDS, error) {
+	// Implement the Queries interface for your SQL impl.
+	// ...or use the provided PostgreSQL queries
+	table := "piecedata_" + miner
+	_, err := mydb.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA)", table))
+	if err != nil {
+		return nil, err
+	}
+	_, err = mydb.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS piecedata_key_text_pattern_ops_idx ON %s (key text_pattern_ops)", table))
 	if err != nil {
 		return nil, err
 	}

@@ -131,6 +131,15 @@ var runCmd = &cli.Command{
 			}
 			defer db.Close()
 		}
+		var pdb *sql.DB = nil
+		if cctx.String(FlagPiecePostgresURL) != "" {
+			log.Infof("will use postgresql as the piece store")
+			pdb, err = sql.Open("postgres", cctx.String(FlagPiecePostgresURL))
+			if err != nil {
+				return err
+			}
+			defer pdb.Close()
+		}
 		var dealerapi api.StorageDealer
 		stop, err := node.New(ctx,
 			node.StorageDealer(&dealerapi),
@@ -148,6 +157,10 @@ var runCmd = &cli.Command{
 				}),
 				node.Override(new(types.KeyStore), func() (types.KeyStore, error) {
 					return repo.NewDBKeyStore(db, cctx.String("actor"))
+				})),
+			node.ApplyIf(func(s *node.Settings) bool { return pdb != nil },
+				node.Override(new(dtypes.PiecedataDS), func() (dtypes.PiecedataDS, error) {
+					return modules.PieceDataBase(db, cctx.String("actor"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 			node.Override(new(api.Sealer), sealingApi),
