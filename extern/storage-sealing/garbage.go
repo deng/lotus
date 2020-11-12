@@ -74,7 +74,7 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		pieces, err := m.pledgeSector(ctx, m.minerSector(sid), []abi.UnpaddedPieceSize{}, size)
+		pieces, err := m.pledgeSector(ctx, sectorID, []abi.UnpaddedPieceSize{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
