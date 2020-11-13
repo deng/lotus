@@ -1,20 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -34,7 +30,7 @@ var infoCmd = &cli.Command{
 func infoCmdAct(cctx *cli.Context) error {
 	color.NoColor = !cctx.Bool("color")
 
-	nodeApi, closer, err := lcli.GetStorageSealerAPI(cctx)
+	nodeApi, closer, err := lcli.GetStorageDealerAPI(cctx)
 	if err != nil {
 		return err
 	}
@@ -70,6 +66,19 @@ func infoCmdAct(cctx *cli.Context) error {
 	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
+	}
+
+	fmt.Printf("PeerId: %s\n", color.BlueString("%s", mi.PeerId))
+
+	// Multiaddrs
+	fmt.Printf("Multiaddrs: %d\n", len(mi.Multiaddrs))
+	for i, a := range mi.Multiaddrs {
+		maddr, err := multiaddr.NewMultiaddrBytes(a)
+		if err != nil {
+			log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
+			continue
+		}
+		fmt.Printf("multiaddr: %s\n", color.BlueString("%s", maddr))
 	}
 
 	fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))))
@@ -158,112 +167,6 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 	fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
 	fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
-
-	fmt.Println()
-
-	sealdur, err := nodeApi.SectorGetExpectedSealDuration(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Expected Seal Duration: %s\n\n", sealdur)
-
-	fmt.Println("Sectors:")
-	err = sectorsInfo(ctx, nodeApi)
-	if err != nil {
-		return err
-	}
-
-	// TODO: grab actr state / info
-	//  * Sealed sectors (count / bytes)
-	//  * Power
-	return nil
-}
-
-type stateMeta struct {
-	i     int
-	col   color.Attribute
-	state sealing.SectorState
-}
-
-var stateOrder = map[sealing.SectorState]stateMeta{}
-var stateList = []stateMeta{
-	{col: 39, state: "Total"},
-	{col: color.FgGreen, state: sealing.Proving},
-
-	{col: color.FgBlue, state: sealing.Empty},
-	{col: color.FgBlue, state: sealing.WaitDeals},
-
-	{col: color.FgRed, state: sealing.UndefinedSectorState},
-	{col: color.FgYellow, state: sealing.Packing},
-	{col: color.FgYellow, state: sealing.PreCommit1},
-	{col: color.FgYellow, state: sealing.PreCommit2},
-	{col: color.FgYellow, state: sealing.PreCommitting},
-	{col: color.FgYellow, state: sealing.PreCommitWait},
-	{col: color.FgYellow, state: sealing.WaitSeed},
-	{col: color.FgYellow, state: sealing.Committing},
-	{col: color.FgYellow, state: sealing.SubmitCommit},
-	{col: color.FgYellow, state: sealing.CommitWait},
-	{col: color.FgYellow, state: sealing.FinalizeSector},
-
-	{col: color.FgCyan, state: sealing.Removing},
-	{col: color.FgCyan, state: sealing.Removed},
-
-	{col: color.FgRed, state: sealing.FailedUnrecoverable},
-	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
-	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
-	{col: color.FgRed, state: sealing.PreCommitFailed},
-	{col: color.FgRed, state: sealing.ComputeProofFailed},
-	{col: color.FgRed, state: sealing.CommitFailed},
-	{col: color.FgRed, state: sealing.PackingFailed},
-	{col: color.FgRed, state: sealing.FinalizeFailed},
-	{col: color.FgRed, state: sealing.Faulty},
-	{col: color.FgRed, state: sealing.FaultReported},
-	{col: color.FgRed, state: sealing.FaultedFinal},
-	{col: color.FgRed, state: sealing.RemoveFailed},
-	{col: color.FgRed, state: sealing.DealsExpired},
-	{col: color.FgRed, state: sealing.RecoverDealIDs},
-}
-
-func init() {
-	for i, state := range stateList {
-		stateOrder[state.state] = stateMeta{
-			i:   i,
-			col: state.col,
-		}
-	}
-}
-
-func sectorsInfo(ctx context.Context, napi api.StorageSealer) error {
-	sectors, err := napi.SectorsList(ctx)
-	if err != nil {
-		return err
-	}
-
-	buckets := map[sealing.SectorState]int{
-		"Total": len(sectors),
-	}
-	for _, s := range sectors {
-		st, err := napi.SectorsStatus(ctx, s, false)
-		if err != nil {
-			return err
-		}
-
-		buckets[sealing.SectorState(st.State)]++
-	}
-
-	var sorted []stateMeta
-	for state, i := range buckets {
-		sorted = append(sorted, stateMeta{i: i, state: state})
-	}
-
-	sort.Slice(sorted, func(i, j int) bool {
-		return stateOrder[sorted[i].state].i < stateOrder[sorted[j].state].i
-	})
-
-	for _, s := range sorted {
-		_, _ = color.New(stateOrder[s.state].col).Printf("\t%s: %d\n", s.state, s.i)
-	}
 
 	return nil
 }

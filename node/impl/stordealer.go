@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -25,6 +27,7 @@ import (
 type StorageDealerAPI struct {
 	common.CommonAPI
 
+	PieceStore        dtypes.ProviderPieceStore
 	StorageProvider   storagemarket.StorageProvider
 	RetrievalProvider retrievalmarket.RetrievalProvider
 	DataTransfer      dtypes.ProviderDataTransfer
@@ -57,6 +60,35 @@ func (sm *StorageDealerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) 
 	}
 
 	sm.StorageMgr.ServeHTTP(w, r)
+}
+
+func (sm *StorageDealerAPI) ActorAddress(ctx context.Context) (address.Address, error) {
+	return sm.Sealer.ActorAddress(ctx)
+}
+
+func (sm *StorageDealerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	return sm.PieceStore.ListPieceInfoKeys()
+}
+
+func (sm *StorageDealerAPI) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	return sm.PieceStore.ListCidInfoKeys()
+}
+
+func (sm *StorageDealerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	pi, err := sm.PieceStore.GetPieceInfo(pieceCid)
+	if err != nil {
+		return nil, err
+	}
+	return &pi, nil
+}
+
+func (sm *StorageDealerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	ci, err := sm.PieceStore.GetCIDInfo(payloadCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ci, nil
 }
 
 func (sm *StorageDealerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {

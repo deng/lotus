@@ -37,15 +37,15 @@ func main() {
 		runCmd,
 		stopCmd,
 		configCmd,
-		//lcli.WithCategory("chain", actorCmd),
-		//lcli.WithCategory("chain", infoCmd),
+		lcli.WithCategory("chain", actorCmd),
+		lcli.WithCategory("chain", infoCmd),
 		lcli.WithCategory("market", storageDealsCmd),
 		lcli.WithCategory("market", retrievalDealsCmd),
 		lcli.WithCategory("market", dataTransfersCmd),
 		//lcli.WithCategory("storage", sectorsCmd),
 		//lcli.WithCategory("storage", storageCmd),
 		//lcli.WithCategory("storage", sealingCmd),
-		//lcli.WithCategory("retrieval", piecesCmd),
+		lcli.WithCategory("retrieval", piecesCmd),
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus-dealer")
 	defer func() {
@@ -118,7 +118,7 @@ func main() {
 	lcli.RunApp(app)
 }
 
-func getActorAddress(ctx context.Context, nodeAPI api.StorageSealer, overrideMaddr string) (maddr address.Address, err error) {
+func getActorAddress(ctx context.Context, nodeAPI api.StorageDealer, overrideMaddr string) (maddr address.Address, err error) {
 	if overrideMaddr != "" {
 		maddr, err = address.NewFromString(overrideMaddr)
 		if err != nil {

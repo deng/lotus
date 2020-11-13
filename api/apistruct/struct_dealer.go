@@ -3,7 +3,9 @@ package apistruct
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,9 +16,16 @@ import (
 )
 
 type StorageDealerStruct struct {
-	StorageSealerStruct
+	CommonStruct
 
 	Internal struct {
+		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
+
+		PiecesListPieces   func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesListCidInfos func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
+		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
+		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
+
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                                                                                                                                 `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]api.MarketDeal, error)                                                                                                                          `perm:"read"`
 		MarketListRetrievalDeals  func(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                                       `perm:"read"`
@@ -46,6 +55,26 @@ type StorageDealerStruct struct {
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 	}
+}
+
+func (c *StorageDealerStruct) ActorAddress(ctx context.Context) (address.Address, error) {
+	return c.Internal.ActorAddress(ctx)
+}
+
+func (c *StorageDealerStruct) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListPieces(ctx)
+}
+
+func (c *StorageDealerStruct) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	return c.Internal.PiecesListCidInfos(ctx)
+}
+
+func (c *StorageDealerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	return c.Internal.PiecesGetPieceInfo(ctx, pieceCid)
+}
+
+func (c *StorageDealerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
 }
 
 func (c *StorageDealerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {

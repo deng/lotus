@@ -54,7 +54,6 @@ func PermissionedStorDealerAPI(a api.StorageDealer) api.StorageDealer {
 	var out StorageDealerStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.StorageSealerStruct.Internal)
 	return &out
 }
 

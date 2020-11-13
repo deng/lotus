@@ -39,6 +39,7 @@ sleep 5
 ./lotus-seed genesis add-miner "${staging}/genesis.json" "${staging}/pre-seal-single.json"
 sleep 5
 
+
 lotus_path=$(mktemp -d)
 
 ./lotus --repo="${lotus_path}" daemon --lotus-make-genesis="${staging}/devnet.car" --genesis-template="${staging}/genesis.json" --bootstrap=false &
@@ -94,46 +95,4 @@ for (( i=1; i<${#ldlist[@]}; i++ )); do
   ./lotus --repo="${repo}" net connect ${boot}
 done
 
-sleep 3
 
-mdt0111=$(mktemp -d)
-mdt0222=$(mktemp -d)
-mdt0333=$(mktemp -d)
-
-mdt0111="${HOME}/.lotusminer-t01000" 
-mdt0222="${HOME}/.lotusminer-t01001" 
-mdt0333="${HOME}/.lotusminer-t01002" 
-
-rm -rf $mdt0111
-rm -rf $mdt0222
-rm -rf $mdt0333
-
-env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner init --genesis-miner --actor=t01000 --pre-sealed-sectors="${sdt0111}" --pre-sealed-metadata="${sdt0111}/pre-seal-t01000.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner run --nosync &
-mpid=$!
-
-env LOTUS_PATH="${ldt0222}" LOTUS_MINER_PATH="${mdt0222}" ./lotus-miner init                 --actor=t01001 --pre-sealed-sectors="${sdt0222}" --pre-sealed-metadata="${sdt0222}/pre-seal-t01001.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt0333}" LOTUS_MINER_PATH="${mdt0333}" ./lotus-miner init                 --actor=t01002 --pre-sealed-sectors="${sdt0333}" --pre-sealed-metadata="${sdt0333}/pre-seal-t01002.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-
-#kill $mpid
-#wait $mpid
-
-#for (( i=0; i<${#pids[@]}; i++ )); do
-  #kill ${pids[$i]}
-#done
-
-#wait
-
-#rm -rf $mdt0111
-#rm -rf $mdt0222
-#rm -rf $mdt0333
-
-#rm -rf $ldt0111
-#rm -rf $ldt0222
-#rm -rf $ldt0333
-
-#rm -rf $sdt0111
-#rm -rf $sdt0222
-#rm -rf $sdt0333
-
-#rm -rf $staging

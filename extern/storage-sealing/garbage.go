@@ -68,7 +68,8 @@ func (m *Sealing) PledgeSector() error {
 			}
 		}
 
-		err = m.sealer.NewSector(ctx, m.minerSector(sid))
+		sectorID := m.minerSector(sid)
+		err = m.sealer.NewSector(ctx, sectorID)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
