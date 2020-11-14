@@ -63,6 +63,7 @@ type Sealer interface {
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(context.Context, bool) (interface{}, error)
+	SealingAbort(ctx context.Context, call storiface.CallID) error
 
 	storiface.WorkerReturn
 	stores.SectorIndex

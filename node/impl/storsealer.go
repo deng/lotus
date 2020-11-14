@@ -276,6 +276,10 @@ func (sm *StorageSealerAPI) SealingSchedDiag(ctx context.Context, b bool) (inter
 	return sm.Manager.SchedDiag(ctx, b)
 }
 
+func (sm *StorageSealerAPI) SealingAbort(ctx context.Context, call storiface.CallID) error {
+	return sm.Manager.Abort(ctx, call)
+}
+
 func (sm *StorageSealerAPI) StorageAddLocal(ctx context.Context, path string) error {
 	if sm.Manager == nil {
 		return xerrors.Errorf("no storage manager")

@@ -57,7 +57,8 @@ type StorageSealerStruct struct {
 		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
 		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
-		SealingSchedDiag func(context.Context, bool) (interface{}, error) `perm:"admin"`
+		SealingSchedDiag func(context.Context, bool) (interface{}, error)       `perm:"admin"`
+		SealingAbort     func(ctx context.Context, call storiface.CallID) error `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`
@@ -201,6 +202,10 @@ func (c *StorageSealerStruct) ReturnFetch(ctx context.Context, callID storiface.
 
 func (c *StorageSealerStruct) SealingSchedDiag(ctx context.Context, b bool) (interface{}, error) {
 	return c.Internal.SealingSchedDiag(ctx, b)
+}
+
+func (c *StorageSealerStruct) SealingAbort(ctx context.Context, call storiface.CallID) error {
+	return c.Internal.SealingAbort(ctx, call)
 }
 
 func (c *StorageSealerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
